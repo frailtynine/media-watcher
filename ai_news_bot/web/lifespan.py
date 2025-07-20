@@ -2,15 +2,15 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from ai_news_bot.ai.crypto_analyzer import crypto_hourly_job
 from ai_news_bot.ai.news_analyzer import news_analyzer
 from ai_news_bot.services.redis.lifespan import init_redis, shutdown_redis
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import setup_bot, shutdown_bot
-from ai_news_bot.ai.crypto_analyzer import crypto_hourly_job
 
 
 async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
@@ -78,4 +78,3 @@ async def lifespan_setup(
 
     await shutdown_redis(app)
     await shutdown_bot()
-

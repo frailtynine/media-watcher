@@ -41,7 +41,10 @@ class BaseCRUD:
         obj = await self.get_object_by_id(session, obj_id)
         if not obj:
             return None
-        for key, value in obj_in.model_dump().items():
+        for key, value in obj_in.model_dump(
+            exclude_unset=True,
+            exclude_none=True
+        ).items():
             setattr(obj, key, value)
         session.add(obj)
         await session.commit()

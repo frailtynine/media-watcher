@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     workers_count: int = 1
     # Enable uvicorn reloading
     reload: bool = False
+    # cors origins
+    cors_origins: list[str] = [""]
 
     # Current environment
     environment: str = "dev"

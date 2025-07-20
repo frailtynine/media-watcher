@@ -50,7 +50,7 @@ async def put_news_in_redis(
     news_task: "NewsTask",
     app: FastAPI,
     result: bool,
-):
+) -> None:
     redis_pool: ConnectionPool = app.state.redis_pool
     if not redis_pool:
         logger.error("Redis pool is not initialized.")
@@ -59,7 +59,10 @@ async def put_news_in_redis(
         **news_task.to_dict(),
         result=result,
     )
-    message = RedisNewsMessageSchema(news=news, task=news_task_schema).model_dump_json()
+    message = RedisNewsMessageSchema(
+        news=news,
+        task=news_task_schema
+    ).model_dump_json()
     redis_client = Redis(connection_pool=redis_pool)
     async with redis_client:
         await redis_client.publish("relevant_news", message)
@@ -89,7 +92,7 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list 
+        item for item in rss_list
         if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
@@ -108,7 +111,7 @@ async def process_news(
     news: RSSItemSchema,
     news_task: "NewsTask",
     initial_prompt: str
-):
+) -> bool:
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
@@ -141,9 +144,15 @@ async def process_news(
                     },
                 ],
             )
-            if response.choices[0].message.content.lower() == "true":
+            if (
+                response.choices[0].message.content
+                and response.choices[0].message.content.lower() == "true"
+            ):
                 return True
-            elif response.choices[0].message.content.lower() == "false":
+            elif (
+                response.choices[0].message.content
+                and response.choices[0].message.content.lower() == "false"
+            ):
                 return False
             else:
                 logger.warning(
@@ -156,7 +165,7 @@ async def process_news(
             return False
 
 
-async def news_analyzer(app: FastAPI):
+async def news_analyzer(app: FastAPI) -> None:
     news_deque: deque[RSSItemSchema] = deque(maxlen=500)
     while True:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -224,9 +233,6 @@ async def news_analyzer(app: FastAPI):
                             session=session,
                         )
                     for chat_id in chat_ids:
-                        logger.info(
-                            f"Queuing task message for chat_id {chat_id}"
-                        )
                         await queue_task_message(
                             chat_id=chat_id,
                             text=(
@@ -236,6 +242,6 @@ async def news_analyzer(app: FastAPI):
                                 f"Market: {task.title}\n"
                                 f"Description: {task.description}\n"
                             ),
-                            task_id=task.id,
+                            task_id=str(task.id),
                         )
         await asyncio.sleep(60)

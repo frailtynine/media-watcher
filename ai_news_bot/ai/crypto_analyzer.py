@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import httpx
 
@@ -9,6 +10,8 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
 
+if TYPE_CHECKING:
+    from ai_news_bot.db.models.crypto_task import CryptoTask
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,7 +46,7 @@ async def get_crypto_price(
 
     Note:
         Requires the CoinMarketCap API key to be set in the variable `API`.
-    """ 
+    """
     api_key = settings.coinmarketcap_api_key
     if not api_key:
         raise ValueError("CoinMarketCap API key is not set in settings.")
@@ -60,15 +63,13 @@ async def get_crypto_price(
         slug = crypto_data["slug"]
         price = crypto_data["quote"]["USD"]["price"]
         timestamp = datetime.fromisoformat(
-            crypto_data["quote"]["USD"]["last_updated"].replace("Z", "+00:00")
+            crypto_data["quote"]["USD"]["last_updated"].replace("Z", "+00:00"),
         )
         result.append((slug, price, timestamp))
     return result
 
 
-async def send_crypto_message(
-    text: str
-):
+async def send_crypto_message(text: str) -> None:
     """Send a cryptocurrency update message to a Telegram chat."""
     async with get_standalone_session() as session:
         chat_ids = await telegram_user_crud.get_all_chat_ids(session=session)
@@ -84,7 +85,10 @@ async def send_crypto_message(
                 logger.error(f"Failed to send message to chat {chat_id}: {e}")
 
 
-async def crypto_check_price_from_db(ticker: str, price: float):
+async def crypto_check_price_from_db(
+    ticker: str,
+    price: float
+) -> list["CryptoTask"]:
     """
     Checks active crypto tasks for a given ticker
     where the current price is within 10% of the task's
@@ -94,15 +98,15 @@ async def crypto_check_price_from_db(ticker: str, price: float):
         ticker (str): The cryptocurrency ticker symbol to check.
         price (float): The current price of the cryptocurrency.
     Returns:
-        list: A list of active tasks where the price is within 10% of the task's end point.
+        list: A list of active tasks where the price is within 10%
+              of the task's end point.
     Raises:
         Any exceptions raised by the database session or CRUD operations.
     """
 
     async with get_standalone_session() as session:
         tasks = await crypto_task_crud.get_active_tasks_by_ticker(
-            session=session,
-            ticker=ticker
+            session=session, ticker=ticker,
         )
     result = []
     for task in tasks:
@@ -111,7 +115,7 @@ async def crypto_check_price_from_db(ticker: str, price: float):
     return result
 
 
-async def crypto_cron_job(tickers: list[str]):
+async def crypto_cron_job(tickers: list[str]) -> None:
     try:
         results = await get_crypto_price(tickers=tickers)
         for slug, price, timestamp in results:
@@ -121,25 +125,25 @@ async def crypto_cron_job(tickers: list[str]):
                 for task in close_tasks:
                     await send_crypto_message(
                         text=(
-                           f"Warning! {slug} price of {price} "
-                           f"is close to {task.title} task endpoint of "
-                           f"{task.end_point}. End date of the "
-                           f"task is {task.end_date}"
-                        )
+                            f"Warning! {slug} price of {price} "
+                            f"is close to {task.title} task endpoint of "
+                            f"{task.end_point}. End date of the "
+                            f"task is {task.end_date}"
+                        ),
                     )
-            # If no close tasks, just publish the update. 
+            # If no close tasks, just publish the update.
             else:
                 await send_crypto_message(
                     text=(
                         "Crypto Update:\n"
                         f"The current price of {slug} is ${price}.\n"
                         f"at {timestamp}"
-                    )
+                    ),
                 )
     except Exception as e:
         print(f"Error fetching crypto price: {e}")
         return
 
 
-async def crypto_hourly_job():
+async def crypto_hourly_job() -> None:
     await crypto_cron_job(tickers=["bitcoin", "toncoin", "ethereum"])

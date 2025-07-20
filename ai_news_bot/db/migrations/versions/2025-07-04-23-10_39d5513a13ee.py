@@ -57,7 +57,9 @@ def upgrade() -> None:
         sa.Column("end_date", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column(
-            "user_id", fastapi_users_db_sqlalchemy.generics.GUID(), nullable=False,
+            "user_id",
+            fastapi_users_db_sqlalchemy.generics.GUID(),
+            nullable=False,
         ),
         sa.Column("start_point", sa.Float(), nullable=True),
         sa.Column("end_point", sa.Float(), nullable=False),
@@ -78,7 +80,9 @@ def upgrade() -> None:
         sa.Column("end_date", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column(
-            "user_id", fastapi_users_db_sqlalchemy.generics.GUID(), nullable=False,
+            "user_id",
+            fastapi_users_db_sqlalchemy.generics.GUID(),
+            nullable=False,
         ),
         sa.Column("false_positives", sa.JSON(), server_default="[]", nullable=False),
         sa.Column("positives", sa.JSON(), server_default="[]", nullable=False),

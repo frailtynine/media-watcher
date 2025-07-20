@@ -6,13 +6,7 @@ from fastapi.responses import UJSONResponse
 
 from ai_news_bot.web.api.router import api_router
 from ai_news_bot.web.lifespan import lifespan_setup
-
-# TODO: move to env
-origins = [
-    "http://localhost:5173",
-    "http://localhost",
-    "http://127.0.0.1",
-]
+from ai_news_bot.settings import settings
 
 
 def get_app() -> FastAPI:
@@ -35,7 +29,7 @@ def get_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

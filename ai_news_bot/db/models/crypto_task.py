@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, time
-from typing import TYPE_CHECKING
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -31,11 +31,7 @@ class CryptoTask(Base):
     description: Mapped[str] = mapped_column(Text(length=5000))
     is_active: Mapped[bool] = mapped_column(default=True)
     end_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    start_date: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=True,
-        default=None
-    )
+    start_date: Mapped[datetime] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now,

@@ -20,6 +20,7 @@ from ai_news_bot.db.base import Base
 from ai_news_bot.db.dependencies import get_db_session
 from ai_news_bot.db.models.news_task import NewsTask
 from ai_news_bot.settings import settings
+
 if TYPE_CHECKING:
     from ai_news_bot.db.models.crypto_task import CryptoTask
 
