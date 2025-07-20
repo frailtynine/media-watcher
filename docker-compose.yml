@@ -33,8 +33,8 @@ services:
     image: nginx:alpine
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "8030:80"
+      - "8443:443"
     depends_on:
       - api
       - frontend
@@ -44,6 +44,9 @@ services:
     command: ["nginx", "-g", "daemon off;"]
 
   migrator:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     image: ai_news_bot:${AI_NEWS_BOT_VERSION:-latest}
     restart: "no"
     command: alembic upgrade head
@@ -53,16 +56,15 @@ services:
       - ai_news_bot-db-data:/app/data/
 
   redis:
-    image: bitnami/redis:6.2.5
+    image: redis:6.2-alpine
     hostname: "ai_news_bot-redis"
     restart: always
-    environment:
-      ALLOW_EMPTY_PASSWORD: "yes"
+    command: redis-server --appendonly yes
     healthcheck:
-      test: redis-cli ping
-      interval: 1s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
       timeout: 3s
-      retries: 50
+      retries: 5
 
 
 

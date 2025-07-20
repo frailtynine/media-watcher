@@ -12,14 +12,14 @@ COPY pyproject.toml poetry.lock /app/src/
 WORKDIR /app/src
 
 # Installing requirements
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install --only main
+RUN poetry install --only main
 
 # Copying actuall application
 COPY . /app/src/
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install --only main
+RUN poetry install --only main
 
 CMD ["/usr/local/bin/python", "-m", "ai_news_bot"]
 
 FROM prod AS dev
 
-RUN --mount=type=cache,target=/tmp/poetry_cache poetry install
+RUN poetry install
