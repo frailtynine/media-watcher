@@ -16,7 +16,10 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.services.redis.schema import RedisNewsMessageSchema
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.web.api.news_task.schema import NewsTaskRedisSchema, RSSItemSchema
+from ai_news_bot.web.api.news_task.schema import (
+    NewsTaskRedisSchema,
+    RSSItemSchema
+)
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
@@ -86,7 +89,8 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list 
+        if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
@@ -100,7 +104,11 @@ def get_news(
     return news_deque, news_to_process
 
 
-async def process_news(news: RSSItemSchema, news_task: "NewsTask", initial_prompt: str):
+async def process_news(
+    news: RSSItemSchema,
+    news_task: "NewsTask",
+    initial_prompt: str
+):
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
@@ -153,7 +161,12 @@ async def news_analyzer(app: FastAPI):
     while True:
         async with httpx.AsyncClient(timeout=30.0) as client:
             logger.info("Fetching RSS feed...")
-            rss_response = await client.get(RSS_URL)
+            try:
+                rss_response = await client.get(RSS_URL)
+            except Exception as e:
+                logger.error(f"Error fetching RSS feed: {e}")
+                await asyncio.sleep(60)
+                continue
             logger.info(f"Fetched RSS feed, {rss_response.status_code}")
         news_deque, news_to_process = get_news(
             response=rss_response,
@@ -174,10 +187,16 @@ async def news_analyzer(app: FastAPI):
         logger.info(f"Found {len(tasks)} active tasks")
         for news in news_to_process:
             for task in tasks:
-                logger.info(f"Processing news: {news.title} for task: {task.title}")
+                logger.info(
+                    f"Processing news: {news.title} for task: {task.title}"
+                )
                 try:
                     is_relevant = await asyncio.wait_for(
-                        process_news(news=news, news_task=task, initial_prompt=role),
+                        process_news(
+                            news=news,
+                            news_task=task,
+                            initial_prompt=role
+                        ),
                         timeout=10.0,
                     )
                 except asyncio.TimeoutError:
@@ -205,7 +224,9 @@ async def news_analyzer(app: FastAPI):
                             session=session,
                         )
                     for chat_id in chat_ids:
-                        logger.info(f"Queuing task message for chat_id {chat_id}")
+                        logger.info(
+                            f"Queuing task message for chat_id {chat_id}"
+                        )
                         await queue_task_message(
                             chat_id=chat_id,
                             text=(

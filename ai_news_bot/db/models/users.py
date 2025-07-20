@@ -1,5 +1,6 @@
 # type: ignore
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi import Depends
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
@@ -8,7 +9,10 @@ from fastapi_users.authentication import (
     BearerTransport,
     JWTStrategy,
 )
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from fastapi_users.db import (
+    SQLAlchemyBaseUserTableUUID,
+    SQLAlchemyUserDatabase
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, relationship
 
@@ -16,12 +20,17 @@ from ai_news_bot.db.base import Base
 from ai_news_bot.db.dependencies import get_db_session
 from ai_news_bot.db.models.news_task import NewsTask
 from ai_news_bot.settings import settings
+if TYPE_CHECKING:
+    from ai_news_bot.db.models.crypto_task import CryptoTask
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     """Represents a user entity."""
 
     tasks: Mapped[list[NewsTask]] = relationship(back_populates="user")
+    crypto_tasks: Mapped[list["CryptoTask"]] = relationship(
+        back_populates="user"
+    )
 
 
 class UserRead(schemas.BaseUser[uuid.UUID]):

@@ -11,3 +11,21 @@ services:
     environment:
       # Enables autoreload.
       AI_NEWS_BOT_RELOAD: "True"
+
+  frontend:
+    ports:
+      # Exposes frontend development port
+      - "3000:3000"
+    build:
+      context: ./ai_news_frontend
+      target: development  # You'll need to add this target to your Dockerfile
+    volumes:
+      # Mount source code for hot reload
+      - ./ai_news_frontend/src:/app/src
+      - ./ai_news_frontend/public:/app/public
+      - ./ai_news_frontend/package.json:/app/package.json
+      - ./ai_news_frontend/vite.config.ts:/app/vite.config.ts
+      - ./ai_news_frontend/tsconfig.json:/app/tsconfig.json
+    environment:
+      - NODE_ENV=development
+    command: npm run dev -- --host 0.0.0.0 --port 3000

@@ -9,7 +9,7 @@ const MESSAGES_STORAGE_KEY = 'websocket_messages';
 const MAX_MESSAGES = 100;
 
 export default function LiveResults() {
-  const url = "ws://localhost:8000/api/news_task/ws";
+  const url = "ws://localhost/api/news_task/ws";
   const [messages, setMessages] = useState<RedisMessage[]>(() => {
     const savedMessages = localStorage.getItem(MESSAGES_STORAGE_KEY);
     return savedMessages ? JSON.parse(savedMessages) : [];

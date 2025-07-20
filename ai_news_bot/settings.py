@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     """
 
     host: str = "127.0.0.1"
-    port: int = 8000
+    port: int = 8030
     # quantity of workers for uvicorn
     workers_count: int = 1
     # Enable uvicorn reloading
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
     users_secret: str = os.getenv("USERS_SECRET", "")
     # Variables for the database
-    db_file: Path = TEMP_DIR / "db.sqlite3"
+    db_file: Path = Path("/app/data/fastapi.db")
     db_echo: bool = False
     # Variables for Redis
     redis_host: str = "ai_news_bot-redis"
@@ -64,7 +64,7 @@ class Settings(BaseSettings):
 
         :return: database URL.
         """
-        return "sqlite+aiosqlite:///./fastapi.db"
+        return f"sqlite+aiosqlite:///{self.db_file}"
 
     @property
     def redis_url(self) -> URL:

@@ -10,6 +10,8 @@ from ai_news_bot.web.lifespan import lifespan_setup
 # TODO: move to env
 origins = [
     "http://localhost:5173",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
 
 

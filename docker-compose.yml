@@ -10,12 +10,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     environment:
       AI_NEWS_BOT_HOST: 0.0.0.0
-      AI_NEWS_BOT_DB_FILE: /db_data/db.sqlite3
+      AI_NEWS_BOT_DB_URL: /app/data/fastapi.db
       AI_NEWS_BOT_REDIS_HOST: ai_news_bot-redis
     volumes:
-      - ai_news_bot-db-data:/db_data/
+      - ai_news_bot-db-data:/app/data/
 
   frontend:
     build:
@@ -25,7 +27,7 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://localhost:8030
 
   nginx:
     image: nginx:alpine
@@ -46,9 +48,9 @@ services:
     restart: "no"
     command: alembic upgrade head
     environment:
-      AI_NEWS_BOT_DB_FILE: /db_data/db.sqlite3
+      AI_NEWS_BOT_DB_URL: /app/data/fastapi.db
     volumes:
-      - ai_news_bot-db-data:/db_data/
+      - ai_news_bot-db-data:/app/data/
 
   redis:
     image: bitnami/redis:6.2.5

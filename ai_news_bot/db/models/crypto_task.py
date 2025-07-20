@@ -1,15 +1,24 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, time
 from typing import TYPE_CHECKING
+from enum import Enum
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql.sqltypes import DateTime, String, Text
+from sqlalchemy.sql.sqltypes import DateTime, String, Text, Time
 
 from ai_news_bot.db.base import Base
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.users import User
+
+
+class CryptoTaskType(str, Enum):
+    """Enum for crypto task types."""
+
+    UP = "up"
+    DOWN = "down"
+    PRICE = "price"
 
 
 class CryptoTask(Base):
@@ -22,6 +31,11 @@ class CryptoTask(Base):
     description: Mapped[str] = mapped_column(Text(length=5000))
     is_active: Mapped[bool] = mapped_column(default=True)
     end_date: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    start_date: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=True,
+        default=None
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.now,
@@ -31,11 +45,16 @@ class CryptoTask(Base):
     user: Mapped["User"] = relationship(back_populates="crypto_tasks")
     start_point: Mapped[float] = mapped_column(nullable=True, default=None)
     end_point: Mapped[float] = mapped_column(nullable=False, default=None)
-    measurement_time: Mapped[datetime] = mapped_column(
-        DateTime,
+    measurement_time: Mapped[time] = mapped_column(
+        Time,
         nullable=False,
     )
     ticker: Mapped[str] = mapped_column(String(length=50), nullable=False)
+    type: Mapped[CryptoTaskType] = mapped_column(
+        String(length=10),
+        nullable=False,
+        default=CryptoTaskType.PRICE,
+    )
 
     def __repr__(self):
         return (
@@ -56,4 +75,5 @@ class CryptoTask(Base):
             "end_point": self.end_point,
             "measurement_time": self.measurement_time,
             "ticker": self.ticker,
+            "type": self.type.value,
         }

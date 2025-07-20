@@ -4,12 +4,13 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from ai_news_bot.ai.news_analyzer import news_analyzer
-from ai_news_bot.db.meta import meta
 from ai_news_bot.services.redis.lifespan import init_redis, shutdown_redis
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import setup_bot, shutdown_bot
+from ai_news_bot.ai.crypto_analyzer import crypto_hourly_job
 
 
 async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
@@ -29,8 +30,6 @@ async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
     )
     app.state.db_engine = engine
     app.state.db_session_factory = session_factory
-    async with engine.begin() as conn:
-        await conn.run_sync(meta.create_all)
 
 
 @asynccontextmanager
@@ -51,6 +50,15 @@ async def lifespan_setup(
     await _setup_db(app)
     init_redis(app)
     await setup_bot()
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        crypto_hourly_job,
+        "cron",
+        minute="0,30",
+        id="crypto_hourly_job",
+    )
+    scheduler.start()
+    app.state.scheduler = scheduler
     news_analyzer_task = asyncio.create_task(news_analyzer(app))
     app.state.news_analyzer_task = news_analyzer_task
 
@@ -58,6 +66,8 @@ async def lifespan_setup(
 
     yield
 
+    if hasattr(app.state, "scheduler"):
+        app.state.scheduler.shutdown(wait=False)
     if hasattr(app.state, "news_analyzer_task"):
         app.state.news_analyzer_task.cancel()
         try:
@@ -68,3 +78,4 @@ async def lifespan_setup(
 
     await shutdown_redis(app)
     await shutdown_bot()
+

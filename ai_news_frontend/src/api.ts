@@ -1,10 +1,10 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate } from './interface';
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate } from './interface';
 
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 const TOKEN_STORAGE_KEY = 'auth_token';
 
 export interface ApiUser {
@@ -188,4 +188,62 @@ export const newsTaskApi = {
     }
   },
 
+};
+
+export const cryptoTaskApi = {
+  // Get all crypto tasks for current user
+  async getTasks(): Promise<CryptoTask[]> {
+    try {
+      const response = await api.get('/crypto_task/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch crypto tasks:', error);
+      return [];
+    }
+  },
+  
+  // Get a specific crypto task by ID
+  async getTask(taskId: number): Promise<CryptoTask | null> {
+    try {
+      const response = await api.get(`/crypto_task/${taskId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch crypto task ${taskId}:`, error);
+      return null;
+    }
+  },
+  
+  // Create a new crypto task
+  async createTask(data: CryptoTaskCreate): Promise<CryptoTask | null> {
+    try {
+      const response = await api.post<CryptoTask>('/crypto_task/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create crypto task:', error);
+      return null;
+    }
+  },
+  
+  // Delete crypto task by ID
+  async deleteTask(taskId: number): Promise<boolean> {
+    try {
+      await api.delete(`/crypto_task/${taskId}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete crypto task ${taskId}:`, error);
+      return false;
+    }
+  },
+
+  // Update an existing crypto task
+  async updateTask(taskId: number, data: CryptoTask): Promise<CryptoTask | null> {
+    try {
+      const response = await api.put<CryptoTask>(`/crypto_task/${taskId}`, data);
+      return response.data;
+    }
+    catch (error) {
+      console.error(`Failed to update crypto task ${taskId}:`, error);
+      return null;
+    }
+  },
 };

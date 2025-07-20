@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode, ReactElement } from 'react';
+import React, { createContext, useContext, useState} from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 interface ComponentContextProps {
   currentComponent: ReactElement | null;
