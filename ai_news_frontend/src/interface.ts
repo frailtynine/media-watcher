@@ -49,9 +49,10 @@ export const CryptoTaskType = {
 export type CryptoTaskType = typeof CryptoTaskType[keyof typeof CryptoTaskType];
 
 export const CryptoTickersType = {
-  SOL: "solana",
   BTC: "bitcoin",
-  TON: "toncoin"
+  TON: "toncoin",
+  ETH: "ethereum",
+  DOGE: "dogecoin",
 }
 
 export type CryptoTickersType = typeof CryptoTickersType[keyof typeof CryptoTickersType];

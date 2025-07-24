@@ -30,22 +30,19 @@ class NewsTaskBaseSchema(BaseModel):
 
 
 class NewsTaskCreateSchema(NewsTaskBaseSchema):
+    """Schema for creating news tasks."""
     pass
 
 
 class NewsTaskUpdateSchema(NewsTaskBaseSchema):
-    """
-    Schema for updating news tasks.
-    """
+    """Schema for updating news tasks."""
 
     is_active: bool | None = None
     end_date: datetime | None = None
 
 
 class NewsTaskRedisSchema(NewsTaskBaseSchema):
-    """
-    Schema for news tasks used in Redis messages.
-    """
+    """Schema for news tasks used in Redis messages."""
 
     id: int
     is_active: bool

@@ -9,6 +9,7 @@ from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
+from ai_news_bot.db.models.crypto_task import CryptoTaskType
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.crypto_task import CryptoTask
@@ -110,9 +111,20 @@ async def crypto_check_price_from_db(
         )
     result = []
     for task in tasks:
-        if abs(price - task.end_point) / task.end_point < 0.1:
+        # Check if the price is within 5% of the task's end point
+        if abs(price - task.end_point) / task.end_point < 0.05:
             result.append(task)
     return result
+
+# TODO: Finish the crypto task checking logic
+# async def check_crypto_tasks(slug: str, price: float) -> None:
+#     async with get_standalone_session() as session:
+#         tasks = await crypto_task_crud.get_active_tasks_by_ticker(
+#             session=session, ticker=slug,
+#         )
+#         for task in tasks:
+#             if task.type == CryptoTaskType.PRICE:
+#                 if 
 
 
 async def crypto_cron_job(tickers: list[str]) -> None:
@@ -128,16 +140,15 @@ async def crypto_cron_job(tickers: list[str]) -> None:
                             f"Warning! {slug} price of {price} "
                             f"is close to {task.title} task endpoint of "
                             f"{task.end_point}. End date of the "
-                            f"task is {task.end_date}"
+                            f"task is {task.end_date.strftime('%Y-%m-%d %H:%M:%S %Z')}"
                         ),
                     )
             # If no close tasks, just publish the update.
             else:
                 await send_crypto_message(
                     text=(
-                        "Crypto Update:\n"
-                        f"The current price of {slug} is ${price}.\n"
-                        f"at {timestamp}"
+                        f"{slug.capitalize()} is ${price:.4f}.\n"
+                        f"at {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
                     ),
                 )
     except Exception as e:
@@ -146,4 +157,4 @@ async def crypto_cron_job(tickers: list[str]) -> None:
 
 
 async def crypto_hourly_job() -> None:
-    await crypto_cron_job(tickers=["bitcoin", "toncoin", "ethereum"])
+    await crypto_cron_job(tickers=["bitcoin", "toncoin", "ethereum", "dogecoin"])
