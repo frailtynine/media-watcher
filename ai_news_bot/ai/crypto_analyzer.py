@@ -9,7 +9,6 @@ from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.db.models.crypto_task import CryptoTaskType
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.crypto_task import CryptoTask
@@ -77,18 +76,15 @@ async def send_crypto_message(text: str) -> None:
         logger.info(f"Sending crypto message to {len(chat_ids)} chats.")
         for chat_id in chat_ids:
             try:
-                await queue_task_message(
-                    chat_id=chat_id,
-                    text=text,
-                    task_id="0"
-                )
+                await queue_task_message(chat_id=chat_id, text=text)
             except Exception as e:
                 logger.error(f"Failed to send message to chat {chat_id}: {e}")
 
 
 async def crypto_check_price_from_db(
     ticker: str,
-    price: float
+    price: float,
+    percentage: float = 0.05,
 ) -> list["CryptoTask"]:
     """
     Checks active crypto tasks for a given ticker
@@ -107,14 +103,17 @@ async def crypto_check_price_from_db(
 
     async with get_standalone_session() as session:
         tasks = await crypto_task_crud.get_active_tasks_by_ticker(
-            session=session, ticker=ticker,
+            session=session,
+            ticker=ticker,
         )
     result = []
     for task in tasks:
-        # Check if the price is within 5% of the task's end point
-        if abs(price - task.end_point) / task.end_point < 0.05:
+        # Check if the price is within the specified percentage
+        # of the task's end point
+        if abs(price - task.end_point) / task.end_point < percentage:
             result.append(task)
     return result
+
 
 # TODO: Finish the crypto task checking logic
 # async def check_crypto_tasks(slug: str, price: float) -> None:
@@ -124,12 +123,13 @@ async def crypto_check_price_from_db(
 #         )
 #         for task in tasks:
 #             if task.type == CryptoTaskType.PRICE:
-#                 if 
+#                 if
 
 
 async def crypto_cron_job(tickers: list[str]) -> None:
     try:
         results = await get_crypto_price(tickers=tickers)
+        main_crypto_report = ""
         for slug, price, timestamp in results:
             # Check if ticker value is close to target values from tasks
             close_tasks = await crypto_check_price_from_db(slug, price)
@@ -140,17 +140,22 @@ async def crypto_cron_job(tickers: list[str]) -> None:
                             f"Warning! {slug} price of {price} "
                             f"is close to {task.title} task endpoint of "
                             f"{task.end_point}. End date of the "
-                            f"task is {task.end_date.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                            f"task is {task.end_date.strftime(
+                                '%Y-%m-%d %H:%M:%S %Z'
+                            )}"
                         ),
                     )
-            # If no close tasks, just publish the update.
+            # If no close tasks, prepare the update message.
             else:
-                await send_crypto_message(
-                    text=(
-                        f"{slug.capitalize()} is ${price:.4f}.\n"
-                        f"at {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
-                    ),
+                main_crypto_report += (
+                    f"{slug.capitalize()} is ${price:.4f}.\n"
+                    f"at {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}\n\n"
                 )
+        # Send unified crypto report.
+        if main_crypto_report:
+            await send_crypto_message(
+                text=main_crypto_report,
+            )
     except Exception as e:
         print(f"Error fetching crypto price: {e}")
         return

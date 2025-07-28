@@ -9,10 +9,7 @@ from fastapi_users.authentication import (
     BearerTransport,
     JWTStrategy,
 )
-from fastapi_users.db import (
-    SQLAlchemyBaseUserTableUUID,
-    SQLAlchemyUserDatabase
-)
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, relationship
 
@@ -30,7 +27,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 
     tasks: Mapped[list[NewsTask]] = relationship(back_populates="user")
     crypto_tasks: Mapped[list["CryptoTask"]] = relationship(
-        back_populates="user"
+        back_populates="user",
     )
 
 

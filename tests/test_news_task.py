@@ -7,10 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.models.users import User
-from ai_news_bot.web.api.news_task.schema import (
-    NewsTaskCreateSchema,
-    RSSItemSchema
-)
+from ai_news_bot.web.api.news_task.schema import NewsTaskCreateSchema, RSSItemSchema
 
 
 @pytest.mark.anyio

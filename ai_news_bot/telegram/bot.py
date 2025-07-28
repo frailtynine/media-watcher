@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 # Global bot instance
 bot_app: Optional[Application] = None
 task_message_queue: asyncio.Queue = asyncio.Queue()
-message_queue: asyncio.Queue = asyncio.Queue()
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -112,7 +111,6 @@ async def setup_bot() -> Application:
         asyncio.create_task(bot_app.updater.start_polling())
 
         # Start message queue processor
-        # asyncio.create_task(process_message_queue())
         asyncio.create_task(process_task_message_queue())
 
         logger.info("Telegram bot started successfully")
@@ -137,49 +135,28 @@ async def process_task_message_queue() -> None:
     while True:
         try:
             message_data = await task_message_queue.get()
-            await send_task_message(
-                chat_id=message_data["chat_id"],
-                text=message_data["text"],
-                task_id=message_data["task_id"],
-            )
+            if message_data["task_id"]:
+                await send_task_message(
+                    chat_id=message_data["chat_id"],
+                    text=message_data["text"],
+                    task_id=message_data["task_id"],
+                )
+            else:
+                await send_message(
+                    chat_id=message_data["chat_id"],
+                    text=message_data["text"],
+                )
             task_message_queue.task_done()
         except Exception as e:
             logger.error(f"Error processing message from queue: {e}")
         await asyncio.sleep(0.1)
 
 
-async def process_message_queue() -> None:
-    """Background task that processes messages from the queue."""
-    while True:
-        try:
-            message_data = await message_queue.get()
-            await send_message(
-                chat_id=message_data["chat_id"],
-                text=message_data["text"],
-            )
-            message_queue.task_done()
-        except Exception as e:
-            logger.error(f"Error processing message from queue: {e}")
-        await asyncio.sleep(0.1)
-
-
-async def queue_message(chat_id: int, text: str) -> None:
-    """
-    Add a message to the queue for sending.
-
-    Args:
-        chat_id: Telegram chat ID to send the message to
-        text: Message text
-    """
-    await message_queue.put(
-        {
-            "chat_id": chat_id,
-            "text": text,
-        },
-    )
-
-
-async def queue_task_message(chat_id: int, text: str, task_id: str) -> None:
+async def queue_task_message(
+    chat_id: int,
+    text: str,
+    task_id: str | None = None
+) -> None:
     """
     Add a message to the queue for sending.
 
