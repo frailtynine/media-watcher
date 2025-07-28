@@ -43,7 +43,7 @@ class BaseCRUD:
             return None
         for key, value in obj_in.model_dump(
             exclude_unset=True,
-            exclude_none=True
+            exclude_none=True,
         ).items():
             setattr(obj, key, value)
         session.add(obj)

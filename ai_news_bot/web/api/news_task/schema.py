@@ -31,7 +31,7 @@ class NewsTaskBaseSchema(BaseModel):
 
 class NewsTaskCreateSchema(NewsTaskBaseSchema):
     """Schema for creating news tasks."""
-    pass
+
 
 
 class NewsTaskUpdateSchema(NewsTaskBaseSchema):

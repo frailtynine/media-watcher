@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import UJSONResponse
 
+from ai_news_bot.settings import settings
 from ai_news_bot.web.api.router import api_router
 from ai_news_bot.web.lifespan import lifespan_setup
-from ai_news_bot.settings import settings
 
 
 def get_app() -> FastAPI:

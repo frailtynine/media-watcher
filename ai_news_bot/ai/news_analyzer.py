@@ -16,10 +16,7 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.services.redis.schema import RedisNewsMessageSchema
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.web.api.news_task.schema import (
-    NewsTaskRedisSchema,
-    RSSItemSchema
-)
+from ai_news_bot.web.api.news_task.schema import NewsTaskRedisSchema, RSSItemSchema
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
@@ -61,7 +58,7 @@ async def put_news_in_redis(
     )
     message = RedisNewsMessageSchema(
         news=news,
-        task=news_task_schema
+        task=news_task_schema,
     ).model_dump_json()
     redis_client = Redis(connection_pool=redis_pool)
     async with redis_client:
@@ -110,7 +107,7 @@ def get_news(
 async def process_news(
     news: RSSItemSchema,
     news_task: "NewsTask",
-    initial_prompt: str
+    initial_prompt: str,
 ) -> bool:
     async with AsyncOpenAI(
         api_key=settings.deepseek,
@@ -197,14 +194,14 @@ async def news_analyzer(app: FastAPI) -> None:
         for news in news_to_process:
             for task in tasks:
                 logger.info(
-                    f"Processing news: {news.title} for task: {task.title}"
+                    f"Processing news: {news.title} for task: {task.title}",
                 )
                 try:
                     is_relevant = await asyncio.wait_for(
                         process_news(
                             news=news,
                             news_task=task,
-                            initial_prompt=role
+                            initial_prompt=role,
                         ),
                         timeout=10.0,
                     )
