@@ -33,7 +33,6 @@ class NewsTaskCreateSchema(NewsTaskBaseSchema):
     """Schema for creating news tasks."""
 
 
-
 class NewsTaskUpdateSchema(NewsTaskBaseSchema):
     """Schema for updating news tasks."""
 

@@ -89,8 +89,7 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list
-        if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
