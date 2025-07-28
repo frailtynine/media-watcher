@@ -153,9 +153,7 @@ async def process_task_message_queue() -> None:
 
 
 async def queue_task_message(
-    chat_id: int,
-    text: str,
-    task_id: str | None = None
+    chat_id: int, text: str, task_id: str | None = None,
 ) -> None:
     """
     Add a message to the queue for sending.

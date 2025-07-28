@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
+TIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
 
 
 async def get_crypto_price(
@@ -140,9 +141,7 @@ async def crypto_cron_job(tickers: list[str]) -> None:
                             f"Warning! {slug} price of {price} "
                             f"is close to {task.title} task endpoint of "
                             f"{task.end_point}. End date of the "
-                            f"task is {task.end_date.strftime(
-                                '%Y-%m-%d %H:%M:%S %Z'
-                            )}"
+                            f"task is {task.end_date.strftime(TIME_FORMAT)}"
                         ),
                     )
             # If no close tasks, prepare the update message.
