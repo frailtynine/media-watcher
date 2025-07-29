@@ -16,7 +16,11 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.services.redis.schema import RedisNewsMessageSchema
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.web.api.news_task.schema import NewsTaskRedisSchema, RSSItemSchema
+from ai_news_bot.web.api.news_task.schema import (
+    NewsTaskRedisSchema,
+    RSSItemSchema
+)
+from ai_news_bot.ai.prompts import Prompts
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
@@ -30,16 +34,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 RSS_URL = "https://tass.ru/rss/v2.xml"
-role = """
-    You are an assistant for a news analyst at Polymarket.
-    Your goal is to check if the news article might help
-    the analyst to resolve the given market.
-    Return True if this news needs futher analysis and
-    might be relevant to the market.
-    Return False if this news is not
-    relevant to the given prompt.
-    Do not return anything else.
-"""
 
 
 async def put_news_in_redis(
@@ -89,7 +83,8 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list
+        if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
@@ -161,6 +156,45 @@ async def process_news(
             return False
 
 
+async def compose_post(
+    news: RSSItemSchema,
+    news_task: "NewsTask",
+) -> str:
+    """
+    Composes a post for the given news item and task.
+    :return: Post text.
+    """
+    positives = "\n".join(
+            f"- {item['title']} \n\n {item['description']}"
+            for item in news_task.positives
+        )
+    async with AsyncOpenAI(
+        api_key=settings.deepseek,
+        base_url="https://api.deepseek.com",
+        timeout=5.0,
+    ) as client:
+        response = await client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {
+                    "role": "system",
+                    "content": Prompts.SUGGEST_POST,
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"News: {news.title} \n {news.description} \n\n"
+                        f"Market: {news_task.title} \n\n"
+                        f"{news_task.description}\n\n"
+                        f"Link: {news_task.link}\n\n"
+                        f"Previous relevant news: {positives}"
+                    ),
+                },
+            ],
+        )
+        return response.choices[0].message.content
+
+
 async def news_analyzer(app: FastAPI) -> None:
     news_deque: deque[RSSItemSchema] = deque(maxlen=500)
     while True:
@@ -200,7 +234,7 @@ async def news_analyzer(app: FastAPI) -> None:
                         process_news(
                             news=news,
                             news_task=task,
-                            initial_prompt=role,
+                            initial_prompt=Prompts.ROLE,
                         ),
                         timeout=10.0,
                     )
@@ -228,15 +262,24 @@ async def news_analyzer(app: FastAPI) -> None:
                         chat_ids = await telegram_user_crud.get_all_chat_ids(
                             session=session,
                         )
+                        await news_task_crud.add_positive(
+                            news=news,
+                            news_task_id=task.id,
+                            session=session,
+                        )
+                    post_text = await compose_post(news, task)
+                    logger.info(f"Composed post: {post_text}")
+                    description_text = (
+                        f"{news.description}\n\n" if news.description else ""
+                    )
                     for chat_id in chat_ids:
                         await queue_task_message(
                             chat_id=chat_id,
                             text=(
-                                f"News: {news.title}\n"
-                                f"Description: {news.description}\n"
-                                f"Link: {news.link}\n\n"
-                                f"Market: {task.title}\n"
-                                f"Description: {task.description}\n"
+                                f"News: [{news.title}]({news.link})\n"
+                                f"{description_text}"
+                                f"Market: [{task.title}]({task.link})\n\n"
+                                f"Post suggestion: {post_text}"
                             ),
                             task_id=str(task.id),
                         )
