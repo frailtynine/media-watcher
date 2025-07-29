@@ -53,6 +53,7 @@ class NewsTaskRedisSchema(NewsTaskBaseSchema):
     false_positives: list[RSSItemSchema] | None = None
     result: bool
 
+
 class NewsTaskReadSchema(NewsTaskBaseSchema):
     """
     Schema for reading news tasks.
