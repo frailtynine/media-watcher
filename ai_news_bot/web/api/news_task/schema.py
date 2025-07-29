@@ -55,9 +55,7 @@ class NewsTaskRedisSchema(NewsTaskBaseSchema):
 
 
 class NewsTaskReadSchema(NewsTaskBaseSchema):
-    """
-    Schema for reading news tasks.
-    """
+    """Schema for reading news tasks."""
 
     id: int
     is_active: bool

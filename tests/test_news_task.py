@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.models.users import User
-from ai_news_bot.web.api.news_task.schema import NewsTaskCreateSchema, RSSItemSchema
+from ai_news_bot.web.api.news_task.schema import (
+    NewsTaskCreateSchema,
+    RSSItemSchema
+)
 
 
 @pytest.mark.anyio
@@ -57,7 +60,7 @@ async def test_news_task_endpoints(
 
 
 @pytest.mark.anyio
-async def test_news_crud(dbsession: AsyncSession, test_user: str):
+async def test_news_crud(dbsession: AsyncSession, test_user: str) -> None:
     user = await dbsession.get(User, test_user)
     new_task = NewsTaskCreateSchema(
         title="CRUD Test Task",
