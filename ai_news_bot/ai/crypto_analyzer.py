@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
-TIME_FORMAT = '%Y-%m-%d %H:%M:%S %Z'
+TIME_FORMAT = "%Y-%m-%d %H:%M:%S %Z"
 
 
 async def get_crypto_price(
