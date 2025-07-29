@@ -7,7 +7,7 @@ from telegram.ext import (
     Application,
     CallbackQueryHandler,
     CommandHandler,
-    ContextTypes,
+    ContextTypes
 )
 
 from ai_news_bot.db.crud.news_task import news_task_crud
@@ -206,6 +206,7 @@ async def send_task_message(
             text=text,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
+            parse_mode="Markdown"
         ),
         timeout=5.00,
     )

@@ -102,7 +102,7 @@ async def process_news(
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
-        timeout=10.0,
+        timeout=5.0,
     ) as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description']}"
@@ -166,7 +166,7 @@ async def compose_post(
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
-        timeout=5.0,
+        timeout=10.0,
     ) as client:
         try:
             response = await client.chat.completions.create(
