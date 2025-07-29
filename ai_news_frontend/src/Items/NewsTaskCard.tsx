@@ -1,4 +1,4 @@
-import { Card, Text, Box, Flex, IconButton, Input, Stack } from "@chakra-ui/react";
+import { Card, Text, Box, Flex, IconButton, Input, Stack, Table } from "@chakra-ui/react";
 import { Textarea } from "@chakra-ui/react";
 import type { NewsTask, NewsTaskCreate } from "../interface";
 import { FiEdit2, FiCheck } from "react-icons/fi";
@@ -6,28 +6,34 @@ import { FaPause, FaPlay } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { FaRegCopy } from "react-icons/fa";
+import { useComponent } from "../hooks/Сomponent";
+import AllTasks from "../Pages/Dashboard";
+
 
 interface NewsTaskCardProps {
   newsTask?: NewsTask;
   onEdit?: (newsTask: NewsTask) => void;
   onCreate?: (newsTask: NewsTaskCreate) => void;
   onDelete?: (newsTaskId: number) => void;
+  listView?: boolean;
+  editMode?: boolean;
 }
 
-export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: NewsTaskCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
+export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, listView, editMode }: NewsTaskCardProps) {
+  const { setCurrentComponent } = useComponent();
 
   // useForm for create mode
   const {
     register,
     handleSubmit,
-    // formState: { errors },
     reset,
   } = useForm<NewsTaskCreate>({
     defaultValues: {
       title: "",
       description: "",
       end_date: "",
+      link: ""
     },
   });
 
@@ -42,25 +48,101 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: N
     }
   };
 
+  // Table list view
+  if (listView && newsTask) {
+    return (
+      <Table.Row>
+        <Table.Cell>
+          <Text>{newsTask.title}</Text>
+        </Table.Cell>
+        <Table.Cell>
+          <Text>{newsTask?.end_date ? new Date(newsTask.end_date).toLocaleDateString() : '∞'}</Text>
+        </Table.Cell>
+        {/* Buttons cell */}
+        <Table.Cell>
+          <Flex justifyContent="flex-end" gap={2}>
+            <IconButton
+              aria-label="Edit"
+              size={"xs"}
+              onClick={() => {
+                setCurrentComponent(
+                <NewsTaskCard
+                  newsTask={newsTask}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  editMode={true}
+                />)
+              }}
+            >
+              <FiEdit2 />
+            </IconButton>
+              <IconButton
+                aria-label="Active"
+                colorScheme="green"
+                size="xs"
+                onClick={() => {
+                    if (onEdit && newsTask) {
+                      onEdit({
+                        ...newsTask,
+                        is_active: newsTask.is_active ? false : true 
+                      });
+                    }
+                }}
+              >
+                {newsTask.is_active ? <FaPause /> : <FaPlay />}
+              </IconButton>
+              <IconButton
+                aria-label="Delete"
+                colorScheme="red"
+                size="xs"
+                onClick={() => {
+                  if (newsTask && onDelete) {
+                    onDelete(newsTask.id);
+                  }
+                }}
+              >
+            <MdDelete />
+          </IconButton>
+        </Flex>
+        </Table.Cell>
+      </Table.Row>
+    )
+  }
+
   return (
-    <Card.Root w={"320px"}>
+    <Card.Root w={"600px"}>
       <Card.Body gap="2" position="relative">
         <Flex justify="space-between" align="start">
           <Box as="form" onSubmit={onCreate ? handleSubmit(onSubmit) : undefined} w="100%">
-            <Card.Title>
-              {onCreate ? (
-                <Input
+            <Card.Title marginBottom={2}>
+                <Flex align="center" gap={2}>
+                {onCreate ? (
+                  <Input
                   placeholder="Enter task title"
                   {...register("title", { required: true })}
-                />
-              ) : isEditing ? (
-                <Input
+                  />
+                ) : editMode ? (
+                  <Input
                   value={task.title}
                   onChange={(e) => setTask({ ...task, title: e.target.value })}
-                />
-              ) : (
-                newsTask?.title
-              )}
+                  />
+                ) : (
+                  <Flex align="center" gap={2}>
+                    <Text flex={1}>{newsTask?.title}</Text>
+                    <IconButton
+                      aria-label="Copy title"
+                      size="2xs"
+                      onClick={() => {
+                      if (newsTask?.link) {
+                        navigator.clipboard.writeText(newsTask.link);
+                      }
+                      }}
+                    >
+                      <FaRegCopy />
+                    </IconButton>
+                  </Flex>
+                )}
+                </Flex>
             </Card.Title>
             <Card.Description>
               {onCreate ? (
@@ -69,7 +151,7 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: N
                   placeholder="Enter task description"
                   {...register("description", { required: true })}
                 />
-              ) : isEditing ? (
+              ) : editMode ? (
                 <Textarea
                   autoresize
                   placeholder="Edit task description"
@@ -81,32 +163,27 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: N
               )}
             </Card.Description>
             {onCreate && (
+              <>  
               <Input
                 type="datetime-local"
                 placeholder="End date"
                 {...register("end_date", { required: true })}
                 mt={2}
               />
+              <Input
+                placeholder="Enter task link"
+                {...register("link")}
+                mt={2}
+              />
+              </>
             )}
           </Box>
-          {!onCreate && (
-            <IconButton
-              aria-label="Edit"
-              position="absolute"
-              top={2}
-              right={2}
-              size={"xs"}
-              onClick={() => setIsEditing(true)}
-            >
-              <FiEdit2 />
-            </IconButton>
-          )}
         </Flex>
       </Card.Body>
       <Card.Footer p={4} gap={2}>
         <Stack>
         <Flex>
-        {!onCreate && !isEditing && newsTask && (
+        {!onCreate && !editMode && newsTask && (
           <>
             <Text fontSize="sm" color="gray.500">
               Created at: {new Date(newsTask.created_at).toLocaleDateString()}
@@ -118,7 +195,7 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: N
         )}
         </Flex>
         <Flex justifyContent={"flex-end"} gap={2} mt={2}>
-        {!onCreate && isEditing && (
+        {!onCreate && editMode && (
           <IconButton
             aria-label="Save"
             colorScheme="blue"
@@ -127,7 +204,7 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete }: N
               if (onEdit) {
                 onEdit(task);
               }
-              setIsEditing(false);
+              setCurrentComponent(<AllTasks />);
             }}
           >
             <FiCheck />

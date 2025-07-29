@@ -39,6 +39,11 @@ class NewsTask(Base):
         default=list,
         server_default="[]",
     )
+    link: Mapped[str] = mapped_column(
+        String(length=500),
+        nullable=True,
+        default=None,
+    )
 
     def __repr__(self):
         return (
@@ -58,4 +63,5 @@ class NewsTask(Base):
             "user_id": self.user_id,
             "false_positives": self.false_positives,
             "positives": self.positives,
+            "link": self.link,
         }

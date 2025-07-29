@@ -1,15 +1,17 @@
-import { Box, Heading, Button, Flex } from "@chakra-ui/react";
+import { Box, Heading, Button, Flex, Table } from "@chakra-ui/react";
 import { newsTaskApi, cryptoTaskApi } from "../api";
 import NewsTaskCard from "../Items/NewsTaskCard";
 import CryptoTaskCard from "../Items/CryptoTaskCard";
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate } from "../interface";
+import { useComponent } from "../hooks/Сomponent";
 
 export default function AllTasks() {
   const [newsTasks, setNewsTasks] = useState<NewsTask[]>([]);
   const [cryptoTasks, setCryptoTasks] = useState<CryptoTask[]>([]);
   const [createdTask, setCreatedTask] = useState<ReactNode>(null);
+  const { setCurrentComponent } = useComponent();
   
   useEffect(() => {
     const fetchNewsTasks = async () => {
@@ -109,9 +111,11 @@ export default function AllTasks() {
         variant="solid"
         m={4}
         onClick={() => {
-          setCreatedTask(
+          setCurrentComponent(
             <NewsTaskCard
-            onCreate={handleCreateNewsTask}
+              onCreate={handleCreateNewsTask}
+              onEdit={handleEditNewsTask}
+              onDelete={handleDeleteNewsTask}
             />
           )
         }}
@@ -133,20 +137,46 @@ export default function AllTasks() {
         Create Crypto Task
       </Button>
     </Flex>
-     {createdTask}
+    <Table.Root striped size={"sm"}>
+      <Table.Header>
+        <Table.Row>
+          <Table.Cell>Title</Table.Cell>
+          <Table.Cell>End Date</Table.Cell>
+          <Table.Cell>Actions</Table.Cell>
+        </Table.Row>
+      </Table.Header>
+      <Table.Body>
+        {createdTask}
+        {newsTasks.length > 0 ? (
+          newsTasks.map((task) => (
+                <NewsTaskCard
+                  newsTask={task}
+                  onDelete={handleDeleteNewsTask}
+                  onEdit={handleEditNewsTask}
+                  listView={true}
+                />
+          ))
+        ) : (
+          <Table.Row>
+            <Table.Cell colSpan={3}>No news tasks available</Table.Cell>
+          </Table.Row>
+        )}
+      </Table.Body>
+    </Table.Root>
      <Flex gap={4} flexWrap={"wrap"}>
-     {newsTasks.length > 0 ? (
+     {/* {newsTasks.length > 0 ? (
        newsTasks.map((task) => (
-        <Box maxWidth="calc(25% - 12px)" minWidth="250px" m={4}>
+        <Box m={4} w={"800px"}>
           <NewsTaskCard
            key={task.id}
            newsTask={task}
            onDelete={handleDeleteNewsTask}
            onEdit={handleEditNewsTask}
+           listView={true}
          />
         </Box>
        ))
-     ) : null}
+     ) : null} */}
      {cryptoTasks.length > 0 ? (
         cryptoTasks.map((task) => (
           <Box maxWidth="calc(25% - 12px)" minWidth="250px">
