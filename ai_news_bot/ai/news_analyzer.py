@@ -173,26 +173,33 @@ async def compose_post(
         base_url="https://api.deepseek.com",
         timeout=5.0,
     ) as client:
-        response = await client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {
-                    "role": "system",
-                    "content": Prompts.SUGGEST_POST,
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"News: {news.title} \n {news.description} \n\n"
-                        f"Market: {news_task.title} \n\n"
-                        f"{news_task.description}\n\n"
-                        f"Link: {news_task.link}\n\n"
-                        f"Previous relevant news: {positives}"
-                    ),
-                },
-            ],
-        )
-        return response.choices[0].message.content
+        try:
+            response = await client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": Prompts.SUGGEST_POST,
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"News: {news.title} \n {news.description} \n\n"
+                            f"Market: {news_task.title} \n\n"
+                            f"{news_task.description}\n\n"
+                            f"Link: {news_task.link}\n\n"
+                            f"Previous relevant news: {positives}"
+                        ),
+                    },
+                ],
+            )
+            logger.info(
+                f"Composed post: {response.choices[0].message.content}",
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Error composing post: {e}")
+            return "Error composing post, please check logs."
 
 
 async def news_analyzer(app: FastAPI) -> None:
