@@ -7,6 +7,7 @@ from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 
 class NewsTaskCRUD(BaseCRUD):
     """CRUD operations for NewsTask model."""
+
     async def _add_item_to_list(
         self,
         news: RSSItemSchema,
@@ -17,18 +18,18 @@ class NewsTaskCRUD(BaseCRUD):
         """Helper method to add an item to a specified list attribute."""
         news_task = await self.get_object_by_id(
             session=session,
-            obj_id=news_task_id
+            obj_id=news_task_id,
         )
         if news_task is None:
             raise ValueError("News task not found")
-        
+
         # Get current list and add new item
         current_list = getattr(news_task, list_attribute)
         setattr(news_task, list_attribute, [
             *current_list,
             news.model_dump(mode="json"),
         ])
-        
+
         session.add(news_task)
         await session.commit()
         await session.refresh(news_task)
@@ -41,7 +42,7 @@ class NewsTaskCRUD(BaseCRUD):
         session: AsyncSession,
     ):
         return await self._add_item_to_list(
-            news, news_task_id, session, "false_positives"
+            news, news_task_id, session, "false_positives",
         )
 
     async def add_positive(
@@ -51,7 +52,7 @@ class NewsTaskCRUD(BaseCRUD):
         session: AsyncSession,
     ) -> NewsTask:
         return await self._add_item_to_list(
-            news, news_task_id, session, "positives"
+            news, news_task_id, session, "positives",
         )
 
     async def get_false_positives(
@@ -61,7 +62,7 @@ class NewsTaskCRUD(BaseCRUD):
     ) -> list[RSSItemSchema]:
         news_task = await self.get_object_by_id(
             session=session,
-            obj_id=news_task_id
+            obj_id=news_task_id,
         )
         if news_task is None:
             raise ValueError("News task not found")
