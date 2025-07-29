@@ -25,6 +25,7 @@ class NewsTaskBaseSchema(BaseModel):
     title: str
     description: str
     end_date: datetime | None
+    link: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,7 +52,6 @@ class NewsTaskRedisSchema(NewsTaskBaseSchema):
     positives: list[RSSItemSchema] | None = None
     false_positives: list[RSSItemSchema] | None = None
     result: bool
-
 
 class NewsTaskReadSchema(NewsTaskBaseSchema):
     """

@@ -12,6 +12,7 @@ export interface NewsTaskCreate {
   title: string;
   description: string;
   end_date: string;
+  link?: string;
 }
 
 export interface NewsTask extends NewsTaskCreate{
