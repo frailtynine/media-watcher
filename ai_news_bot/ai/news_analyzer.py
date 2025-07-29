@@ -10,17 +10,14 @@ from openai import AsyncOpenAI
 from redis.asyncio import ConnectionPool, Redis
 from rss_parser import RSSParser
 
+from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.services.redis.schema import RedisNewsMessageSchema
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.web.api.news_task.schema import (
-    NewsTaskRedisSchema,
-    RSSItemSchema
-)
-from ai_news_bot.ai.prompts import Prompts
+from ai_news_bot.web.api.news_task.schema import NewsTaskRedisSchema, RSSItemSchema
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
@@ -83,8 +80,7 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list
-        if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
@@ -106,7 +102,7 @@ async def process_news(
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
-        timeout=5.0,
+        timeout=10.0,
     ) as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description']}"
@@ -165,9 +161,8 @@ async def compose_post(
     :return: Post text.
     """
     positives = "\n".join(
-            f"- {item['title']} \n\n {item['description']}"
-            for item in news_task.positives
-        )
+        f"- {item['title']} \n\n {item['description']}" for item in news_task.positives
+    )
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
