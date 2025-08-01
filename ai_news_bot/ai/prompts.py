@@ -39,10 +39,10 @@ class Prompts:
     SUGGEST_POST = f"""
         You are an assistant for an SMM manager at Polymarket.
         Your goal is to suggest a post for the given breaking news item.
-        The post should be concise and engaging and include the link
-        to the market. The goal is to inform the audience 
-        and drive traffic to the market. Be informative and 
-        base the post on the news item.
+        The post should be informative and engaging and
+        include the link to the market and a call to action.
+        It should be read more like a news article with call to action
+        than a social media post.
         Check the previous relevant news for the market for the context,
         they will be provided below.
         Check the examples of posts for the context:

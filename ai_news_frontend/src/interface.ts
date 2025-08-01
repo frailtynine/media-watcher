@@ -77,3 +77,16 @@ export interface CryptoTask extends CryptoTaskCreate {
   created_at: string;
   user_id: string;
 }
+
+export interface Event {
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  results_at: string;
+  ends_at: string;
+  false_positives: Array<Record<string, any>>;
+  positives: Array<Record<string, any>>;
+  rules: string;
+  is_active: boolean;
+}
