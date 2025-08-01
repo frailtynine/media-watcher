@@ -27,7 +27,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("results_at", sa.DateTime(), nullable=False),
         sa.Column("ends_at", sa.DateTime(), nullable=False),
-        sa.Column("amount_ton", sa.Integer(), nullable=False),
         sa.Column("translations", sa.JSON(), nullable=False),
         sa.Column("false_positives", sa.JSON(), server_default="[]", nullable=False),
         sa.Column("positives", sa.JSON(), server_default="[]", nullable=False),
