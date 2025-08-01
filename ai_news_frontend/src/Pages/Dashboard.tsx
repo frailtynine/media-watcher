@@ -1,18 +1,16 @@
-import { Box, Heading, Button, Flex, Table, IconButton } from "@chakra-ui/react";
-import { newsTaskApi, cryptoTaskApi, eventsAPI} from "../api";
+import { Box, Heading, Button, Flex, Table } from "@chakra-ui/react";
+import { newsTaskApi, cryptoTaskApi } from "../api";
 import NewsTaskCard from "../Items/NewsTaskCard";
 import CryptoTaskCard from "../Items/CryptoTaskCard";
 import { useState, useEffect } from "react";
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event } from "../interface";
+import type { ReactNode } from "react";
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate } from "../interface";
 import { useComponent } from "../hooks/Сomponent";
-import EventItem from "../Items/Event";
-import { HiRefresh } from "react-icons/hi";
-
 
 export default function AllTasks() {
   const [newsTasks, setNewsTasks] = useState<NewsTask[]>([]);
   const [cryptoTasks, setCryptoTasks] = useState<CryptoTask[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [createdTask, setCreatedTask] = useState<ReactNode>(null);
   const { setCurrentComponent } = useComponent();
   
   useEffect(() => {
@@ -34,54 +32,15 @@ export default function AllTasks() {
       }
     }
 
-    const fetchEvents = async () => {
-      try {
-        const response = await eventsAPI.getAll();
-        setEvents(response);
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-      }
-    };
-
     fetchNewsTasks();
     fetchCryptoTasks();
-    fetchEvents();
   }, []);
   
-  // Event handlers
-  const handlePauseEvent = async (eventId: string) => {
-    try {
-      const updatedEvent = await eventsAPI.customCall('GET', `${eventId}/toggle_pause`);
-      setEvents((prevEvents) =>
-        prevEvents.map((event) => (event.id === updatedEvent.id ? updatedEvent : event))
-      );
-    } catch (error) {
-      console.error("Failed to pause event:", error);
-    }
-  };
-
-  const handleDeleteEvent = async (eventId: string) => {
-    try {
-      await eventsAPI.delete(eventId);
-      setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventId));
-    } catch (error) {
-      console.error("Failed to delete event:", error);
-    }
-  };
-
-  const handleEventsRefresh = async () => {
-    try {
-      const refreshedEvents = await eventsAPI.customCall('GET', 'refresh');
-      setEvents(refreshedEvents);
-    } catch (error) {
-      console.error("Failed to refresh events:", error);
-    }
-  }
-
   // NewsTask handlers 
   const handleCreateNewsTask = async (task: NewsTaskCreate) => {
     try {
       await newsTaskApi.createTask(task);
+      setCreatedTask(null);
     } catch (error) {
       console.error("Failed to create news task:", error);
     }
@@ -113,6 +72,7 @@ export default function AllTasks() {
   const handleCreateCryptoTask = async (task: CryptoTaskCreate) => {
     try {
       await cryptoTaskApi.createTask(task);
+      setCreatedTask(null);
     } catch (error) {
       console.error("Failed to create crypto task:", error);
     }
@@ -146,15 +106,6 @@ export default function AllTasks() {
    <Box>
      <Heading mb={4}>Dashboard</Heading>
      <Flex direction={"row"} justifyContent={"flex-end"}>
-      <IconButton
-        aria-label="Refresh Events"
-        onClick={handleEventsRefresh}
-        colorScheme="blue"
-        size="sm"
-        m={2}
-      >
-        <HiRefresh />
-      </IconButton>
       <Button
         colorScheme="teal"
         variant="solid"
@@ -176,7 +127,7 @@ export default function AllTasks() {
         variant="solid"
         m={4}
         onClick={() => {
-          setCurrentComponent(
+          setCreatedTask(
             <CryptoTaskCard
             onCreate={handleCreateCryptoTask}
             />
@@ -195,10 +146,10 @@ export default function AllTasks() {
         </Table.Row>
       </Table.Header>
       <Table.Body>
+        {createdTask}
         {newsTasks.length > 0 ? (
           newsTasks.map((task) => (
                 <NewsTaskCard
-                  key={task.id}
                   newsTask={task}
                   onDelete={handleDeleteNewsTask}
                   onEdit={handleEditNewsTask}
@@ -210,18 +161,22 @@ export default function AllTasks() {
             <Table.Cell colSpan={3}>No news tasks available</Table.Cell>
           </Table.Row>
         )}
-        {events.length > 0 && (events.map((item) => (
-          <EventItem
-            key={item.id}
-            event={item}
-            onPause={handlePauseEvent}
-            onDelete={handleDeleteEvent}
-            listView
-          />
-        )))}
       </Table.Body>
     </Table.Root>
      <Flex gap={4} flexWrap={"wrap"}>
+     {/* {newsTasks.length > 0 ? (
+       newsTasks.map((task) => (
+        <Box m={4} w={"800px"}>
+          <NewsTaskCard
+           key={task.id}
+           newsTask={task}
+           onDelete={handleDeleteNewsTask}
+           onEdit={handleEditNewsTask}
+           listView={true}
+         />
+        </Box>
+       ))
+     ) : null} */}
      {cryptoTasks.length > 0 ? (
         cryptoTasks.map((task) => (
           <Box maxWidth="calc(25% - 12px)" minWidth="250px">
