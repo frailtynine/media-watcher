@@ -1,7 +1,7 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate } from './interface';
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event } from './interface';
 
 
 const API_BASE_URL = '/api';
@@ -247,3 +247,99 @@ export const cryptoTaskApi = {
     }
   },
 };
+
+
+export class CrudApi<T, TCreate = Partial<T>, TUpdate = Partial<T>> {
+  private endpoint: string;
+  
+  constructor(endpoint: string) {
+    this.endpoint = endpoint;
+  }
+
+  // Get all items
+  async getAll(): Promise<T[]> {
+    try {
+      const response = await api.get<T[]>(`/${this.endpoint}/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch ${this.endpoint}:`, error);
+      return [];
+    }
+  }
+
+  // Get item by ID
+  async getById(id: number | string): Promise<T | null> {
+    try {
+      const response = await api.get<T>(`/${this.endpoint}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch ${this.endpoint} ${id}:`, error);
+      return null;
+    }
+  }
+
+  // Create new item
+  async create(data: TCreate): Promise<T | null> {
+    try {
+      const response = await api.post<T>(`/${this.endpoint}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to create ${this.endpoint}:`, error);
+      return null;
+    }
+  }
+
+  // Update existing item
+  async update(id: number | string, data: TUpdate): Promise<T | null> {
+    try {
+      const response = await api.put<T>(`/${this.endpoint}/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update ${this.endpoint} ${id}:`, error);
+      return null;
+    }
+  }
+
+  // Delete item
+  async delete(id: number | string): Promise<boolean> {
+    try {
+      await api.delete(`/${this.endpoint}/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete ${this.endpoint} ${id}:`, error);
+      return false;
+    }
+  }
+
+  // Patch item (partial update)
+  async patch(id: number | string, data: Partial<TUpdate>): Promise<T | null> {
+    try {
+      const response = await api.patch<T>(`/${this.endpoint}/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to patch ${this.endpoint} ${id}:`, error);
+      return null;
+    }
+  }
+
+  // Custom endpoint call
+  async customCall<TResponse = any>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    path: string,
+    data?: any
+  ): Promise<TResponse | null> {
+    try {
+      const response = await api.request<TResponse>({
+        method: method.toLowerCase() as any,
+        url: `/${this.endpoint}/${path}`,
+        data,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to call ${method} /${this.endpoint}/${path}:`, error);
+      return null;
+    }
+  }
+}
+
+export const eventsAPI = new CrudApi<Event>('events');

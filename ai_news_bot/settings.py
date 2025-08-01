@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # For testing purposes.
     # TODO: in prod create a model for tokens
     deepseek: Optional[str] = None
+    # ID for futurum API session
+    session_id: str = ""
     tg_bot_test_token: Optional[str] = None
     tg_bot_token: Optional[str] = None
     coinmarketcap_api_key: Optional[str] = None
