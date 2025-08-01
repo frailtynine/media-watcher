@@ -7,20 +7,19 @@ from typing import TYPE_CHECKING
 import httpx
 from fastapi import FastAPI
 from openai import AsyncOpenAI
-from redis.asyncio import ConnectionPool, Redis
 from rss_parser import RSSParser
 
 from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.db.crud.news_task import news_task_crud
+from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
-from ai_news_bot.services.redis.schema import RedisNewsMessageSchema
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.web.api.news_task.schema import NewsTaskRedisSchema, RSSItemSchema
+from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 
 if TYPE_CHECKING:
-    from ai_news_bot.db.models.news_task import NewsTask
+    from ai_news_bot.db.models.events import Event
 
 # Set up logging
 logging.basicConfig(
@@ -31,29 +30,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 RSS_URL = "https://tass.ru/rss/v2.xml"
-
-
-async def put_news_in_redis(
-    news: RSSItemSchema,
-    news_task: "NewsTask",
-    app: FastAPI,
-    result: bool,
-) -> None:
-    redis_pool: ConnectionPool = app.state.redis_pool
-    if not redis_pool:
-        logger.error("Redis pool is not initialized.")
-        return
-    news_task_schema = NewsTaskRedisSchema(
-        **news_task.to_dict(),
-        result=result,
-    )
-    message = RedisNewsMessageSchema(
-        news=news,
-        task=news_task_schema,
-    ).model_dump_json()
-    redis_client = Redis(connection_pool=redis_pool)
-    async with redis_client:
-        await redis_client.publish("relevant_news", message)
 
 
 def get_news(
@@ -80,7 +56,8 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list
+        if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
@@ -96,7 +73,7 @@ def get_news(
 
 async def process_news(
     news: RSSItemSchema,
-    news_task: "NewsTask",
+    event: "Event",
     initial_prompt: str,
 ) -> bool:
     async with AsyncOpenAI(
@@ -106,7 +83,7 @@ async def process_news(
     ) as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description']}"
-            for item in news_task.false_positives
+            for item in event.false_positives
         )
         try:
             response = await client.chat.completions.create(
@@ -125,8 +102,8 @@ async def process_news(
                         "role": "user",
                         "content": (
                             f"News: {news.title} \n {news.description}. \n\n"
-                            f"Market: {news_task.title} \n\n"
-                            f" {news_task.description}"
+                            f"Market: {event.title} \n\n"
+                            f" {event.rules}"
                         ),
                     },
                 ],
@@ -154,14 +131,15 @@ async def process_news(
 
 async def compose_post(
     news: RSSItemSchema,
-    news_task: "NewsTask",
+    event: "Event",
 ) -> str:
     """
-    Composes a post for the given news item and task.
+    Composes a post for the given news item and event.
     :return: Post text.
     """
     positives = "\n".join(
-        f"- {item['title']} \n\n {item['description']}" for item in news_task.positives
+        f"- {item['title']} \n\n {item['description']}"
+        for item in event.positives
     )
     async with AsyncOpenAI(
         api_key=settings.deepseek,
@@ -180,9 +158,9 @@ async def compose_post(
                         "role": "user",
                         "content": (
                             f"News: {news.title} \n {news.description} \n\n"
-                            f"Market: {news_task.title} \n\n"
-                            f"{news_task.description}\n\n"
-                            f"Link: {news_task.link}\n\n"
+                            f"Market: {event.title} \n\n"
+                            f"{event.rules}\n\n"
+                            f"Link: {event.link}\n\n"
                             f"Previous relevant news: {positives}"
                         ),
                     },
@@ -219,7 +197,7 @@ async def news_analyzer(app: FastAPI) -> None:
             await asyncio.sleep(60)
             continue
         async with get_standalone_session() as session:
-            tasks: list[NewsTask] = await news_task_crud.get_active_tasks(
+            tasks: list[Event] = await crud_event.get_active_tasks(
                 session=session,
             )
         if not tasks:
@@ -235,7 +213,7 @@ async def news_analyzer(app: FastAPI) -> None:
                     is_relevant = await asyncio.wait_for(
                         process_news(
                             news=news,
-                            news_task=task,
+                            event=task,
                             initial_prompt=Prompts.ROLE,
                         ),
                         timeout=10.0,
@@ -249,15 +227,6 @@ async def news_analyzer(app: FastAPI) -> None:
                 logger.info(
                     f"Processed news: {news.title}, "
                     f"relevant to task '{task.title}': {is_relevant}",
-                )
-                await asyncio.wait_for(
-                    put_news_in_redis(
-                        news=news,
-                        news_task=task,
-                        app=app,
-                        result=is_relevant,
-                    ),
-                    timeout=10.0,
                 )
                 if is_relevant:
                     async with get_standalone_session() as session:
