@@ -94,16 +94,14 @@ class BaseCRUD:
         field_value: str,
     ) -> Base | None:
         """Get object by field."""
-        stmt = select(self.model).where(
-            getattr(self.model, field_name) == field_value
-        )
+        stmt = select(self.model).where(getattr(self.model, field_name) == field_value)
         query = await session.execute(stmt)
         return query.scalars().first()
 
     async def delete_object_by_id(
         self,
         session: AsyncSession,
-        obj_id: int | str,
+        obj_id: int,
         user: User | None = None,
     ) -> bool:
         """Delete object by ID."""
@@ -135,9 +133,7 @@ class BaseCRUD:
 
         Works only with Task moodels.
         """
-        news_task = await self.get_object_by_id(
-            session=session, obj_id=news_task_id
-        )
+        news_task = await self.get_object_by_id(session=session, obj_id=news_task_id)
         if news_task is None:
             raise ValueError("Task not found")
         news_task.is_active = False
