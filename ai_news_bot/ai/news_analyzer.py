@@ -233,11 +233,11 @@ async def news_analyzer(app: FastAPI) -> None:
                         chat_ids = await telegram_user_crud.get_all_chat_ids(
                             session=session,
                         )
-                        await news_task_crud.add_positive(
-                            news=news,
-                            news_task_id=task.id,
-                            session=session,
-                        )
+                        await crud_event.add_positive(
+                                news=news,
+                                event_id=task.id,
+                                session=session,
+                            )
                     post_text = await compose_post(news, task)
                     logger.info(f"Composed post: {post_text}")
                     description_text = (
