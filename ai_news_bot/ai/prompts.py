@@ -13,7 +13,7 @@ class Prompts:
         What’s happening during this minute is unknown.
         But the pressure to release more Epstein materials is growing on Trump.
         [Will he? Predict on Futurum.](https://t.me/ft_rm_bot/futurum
-        ?startapp=event_4e022ad0-28e5-4b3d-bac8-e27ac0716c9f=source_futurumTg)"
+        ?startapp=event_4e022ad0-28e5-4b3d-bac8-e27ac0716c9f=source_futurumTg)
     """
 
     POST_EXAMPLE_TWO = """
@@ -32,17 +32,20 @@ class Prompts:
         Return True if this news needs futher analysis and
         might be relevant to the market.
         Return False if this news is not
-        relevant to the given prompt.
+        relevant to the given prompt, or if it is an opinion
+        piece or analytics content.
         Do not return anything else.
     """
 
     SUGGEST_POST = f"""
-        You are an assistant for an SMM manager at Polymarket.
+        You are an assistant for an SMM manager at Futurum,
+        Polymarket-style prediction platform.
         Your goal is to suggest a post for the given breaking news item.
         The post should be informative and engaging and
         include the link to the market and a call to action.
         It should be read more like a news article with call to action
-        than a social media post.
+        than a social media post. Use as much detail from the news as possible.
+        Avoid rhetorical questions and broad statements.
         Check the previous relevant news for the market for the context,
         they will be provided below.
         Check the examples of posts for the context:

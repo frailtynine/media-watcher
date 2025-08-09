@@ -144,7 +144,7 @@ async def compose_post(
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
-        timeout=10.0,
+        timeout=50.0,
     ) as client:
         try:
             response = await client.chat.completions.create(
@@ -238,8 +238,15 @@ async def news_analyzer(app: FastAPI) -> None:
                                 event_id=task.id,
                                 session=session,
                             )
-                    post_text = await compose_post(news, task)
-                    logger.info(f"Composed post: {post_text}")
+                    try:
+                        post_text = await compose_post(news, task)
+                        logger.info(f"Composed post: {post_text}")
+                    except asyncio.TimeoutError:
+                        logger.error(
+                            f"Composing post for news {news.title} "
+                            f"and task {task.title} timed out.",
+                        )
+                        post_text = "Error composing post, please check logs."
                     description_text = (
                         f"{news.description}\n\n" if news.description else ""
                     )
