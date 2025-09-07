@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from collections import deque
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -34,8 +33,8 @@ RSS_URL = "https://tass.ru/rss/v2.xml"
 
 def get_news(
     response: httpx.Response,
-    news_deque: deque[RSSItemSchema],
-) -> tuple[deque[RSSItemSchema], list[RSSItemSchema]]:
+    processed_news_links: set[str],
+) -> tuple[set[str], list[RSSItemSchema]]:
     """
     Fetches news items from the RSS feed.
 
@@ -62,13 +61,18 @@ def get_news(
     rss_list = rss_list[:50]
     news_to_process = []
     for item in rss_list:
-        if item not in news_deque:
-            news_deque.append(item)
-            news_to_process.append(item)
+        if item.link not in processed_news_links:
+            processed_news_links.add(item.link)
+            news_to_process.append(item)  
+            # Prevent memory leak - keep only last 1000 links
+            if len(processed_news_links) > 1000:
+                # Remove 200 oldest entries (simple cleanup)
+                to_remove = list(processed_news_links)[:200]
+                processed_news_links -= set(to_remove)
     news_to_process.sort(key=lambda x: x.pub_date)
     if not news_to_process:
         logger.info("No new news items to process.")
-    return news_deque, news_to_process
+    return processed_news_links, news_to_process
 
 
 async def process_news(
@@ -176,7 +180,7 @@ async def compose_post(
 
 
 async def news_analyzer(app: FastAPI) -> None:
-    news_deque: deque[RSSItemSchema] = deque(maxlen=500)
+    processed_news_links: set[str] = set()
     while True:
         async with httpx.AsyncClient(timeout=30.0) as client:
             logger.info("Fetching RSS feed...")
@@ -187,9 +191,9 @@ async def news_analyzer(app: FastAPI) -> None:
                 await asyncio.sleep(60)
                 continue
             logger.info(f"Fetched RSS feed, {rss_response.status_code}")
-        news_deque, news_to_process = get_news(
+        processed_news_links, news_to_process = get_news(
             response=rss_response,
-            news_deque=news_deque,
+            processed_news_links=processed_news_links,
         )
         logger.info(f"Current news count in queue: {len(news_to_process)}")
         if not news_to_process:
@@ -200,39 +204,40 @@ async def news_analyzer(app: FastAPI) -> None:
             tasks: list[Event] = await crud_event.get_active_tasks(
                 session=session,
             )
+            chat_ids = await telegram_user_crud.get_all_chat_ids(
+                session=session,
+            )
         if not tasks:
             logger.info("No active tasks found")
             continue
         logger.info(f"Found {len(tasks)} active tasks")
-        for news in news_to_process:
-            for task in tasks:
-                logger.info(
-                    f"Processing news: {news.title} for task: {task.title}",
-                )
-                try:
-                    is_relevant = await asyncio.wait_for(
-                        process_news(
-                            news=news,
-                            event=task,
-                            initial_prompt=Prompts.ROLE,
-                        ),
-                        timeout=10.0,
+        async with get_standalone_session() as session:
+            for news in news_to_process:
+                for task in tasks:
+                    logger.info(
+                        f"Processing news: {news.title} "
+                        f"for task: {task.title}"
                     )
-                except asyncio.TimeoutError:
-                    logger.error(
-                        f"Processing news {news.title} for task {task.title} "
-                        "timed out.",
-                    )
-                    is_relevant = False
-                logger.info(
-                    f"Processed news: {news.title}, "
-                    f"relevant to task '{task.title}': {is_relevant}",
-                )
-                if is_relevant:
-                    async with get_standalone_session() as session:
-                        chat_ids = await telegram_user_crud.get_all_chat_ids(
-                            session=session,
+                    try:
+                        is_relevant = await asyncio.wait_for(
+                            process_news(
+                                news=news,
+                                event=task,
+                                initial_prompt=Prompts.ROLE,
+                            ),
+                            timeout=10.0,
                         )
+                    except asyncio.TimeoutError:
+                        logger.error(
+                            f"Processing news {news.title} "
+                            f"for task {task.title} timed out.",
+                        )
+                        is_relevant = False
+                    logger.info(
+                        f"Processed news: {news.title}, "
+                        f"relevant to task '{task.title}': {is_relevant}",
+                    )
+                    if is_relevant:
                         try:
                             await crud_event.add_positive(
                                     news=news,
@@ -241,27 +246,29 @@ async def news_analyzer(app: FastAPI) -> None:
                                 )
                         except Exception as e:
                             logger.error(f"Error adding positive event: {e}")
-                    try:
-                        post_text = await compose_post(news, task)
-                        logger.info(f"Composed post: {post_text}")
-                    except asyncio.TimeoutError:
-                        logger.error(
-                            f"Composing post for news {news.title} "
-                            f"and task {task.title} timed out.",
+                        try:
+                            post_text = await compose_post(news, task)
+                            logger.info(f"Composed post: {post_text}")
+                        except asyncio.TimeoutError:
+                            logger.error(
+                                f"Composing post for news {news.title} "
+                                f"and task {task.title} timed out.",
+                            )
+                            post_text = "Error composing post."
+                        description_text = (
+                            f"{news.description}\n\n"
+                            if news.description
+                            else ""
                         )
-                        post_text = "Error composing post, please check logs."
-                    description_text = (
-                        f"{news.description}\n\n" if news.description else ""
-                    )
-                    for chat_id in chat_ids:
-                        await queue_task_message(
-                            chat_id=chat_id,
-                            text=(
-                                f"News: [{news.title}]({news.link})\n"
-                                f"{description_text}"
-                                f"Market: [{task.title}]({task.link})\n\n"
-                                f"Post suggestion: {post_text}"
-                            ),
-                            task_id=str(task.id),
-                        )
+                        for chat_id in chat_ids:
+                            await queue_task_message(
+                                chat_id=chat_id,
+                                text=(
+                                    f"News: [{news.title}]({news.link})\n"
+                                    f"{description_text}"
+                                    f"Market: [{task.title}]({task.link})\n\n"
+                                    f"Post suggestion: {post_text}"
+                                ),
+                                task_id=str(task.id),
+                            )
         await asyncio.sleep(60)
