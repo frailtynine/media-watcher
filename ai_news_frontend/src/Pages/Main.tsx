@@ -11,26 +11,58 @@ export default function Main() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (authApi.isAuthenticated()) {
-        try {
-          setIsAuthenticated(true);
-          if (!currentComponent) {
-            setCurrentComponent(<AllTasks />);
-          }
-        } catch (error) {
-          authApi.logout();
-          setCurrentComponent(null);
+    useEffect(() => {
+    const checkInitialAuth = async () => {
+      try {
+        const token = authApi.getToken();
+        if (!token) {
+          setIsAuthenticated(false);
+          setCurrentComponent(<Login />);
+          setIsLoading(false);
+          return;
         }
-      } else {
-        setCurrentComponent(null);
+
+        const auth = await authApi.isAuthenticated();
+        setIsAuthenticated(auth);
+        
+        if (auth) {
+          setCurrentComponent(<AllTasks />);
+        } else {
+          authApi.removeToken(); // Clean up invalid token
+          setCurrentComponent(<Login />);
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+        authApi.removeToken();
+        setCurrentComponent(<Login />);
       }
       setIsLoading(false);
     };
     
-    checkAuth();
-  }, [currentComponent, setCurrentComponent]);
+    checkInitialAuth();
+  }, []); // Only run once on mount
+
+  // Handle authentication state changes from login/logout
+  useEffect(() => {
+    const handleAuthSuccess = () => {
+      setIsAuthenticated(true);
+      setCurrentComponent(<AllTasks />);
+    };
+
+    const handleAuthLogout = () => {
+      setIsAuthenticated(false);
+      setCurrentComponent(<Login />);
+    };
+
+    window.addEventListener('auth-login', handleAuthSuccess);
+    window.addEventListener('auth-logout', handleAuthLogout);
+
+    return () => {
+      window.removeEventListener('auth-login', handleAuthSuccess);
+      window.removeEventListener('auth-logout', handleAuthLogout);
+    };
+  }, [setCurrentComponent]);
 
   
 

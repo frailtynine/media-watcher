@@ -4,7 +4,9 @@ import axios from 'axios';
 import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event } from './interface';
 
 
-const API_BASE_URL = '/api';
+// const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:8030/api';
+
 const TOKEN_STORAGE_KEY = 'auth_token';
 
 export interface ApiUser {
@@ -121,16 +123,39 @@ export const authApi = {
   },
 
   // Logout user
-  logout(): void {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  async logout(): Promise<void> {
+      try {
+        await api.post('/auth/jwt/logout');
+      } catch (error) {
+        console.error('Logout failed:', error);
+      } finally {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        window.dispatchEvent(new Event('auth-logout'));
+      }
   },
 
   // Check if user is authenticated
-  isAuthenticated(): boolean {
-    return localStorage.getItem(TOKEN_STORAGE_KEY) !== null;
+  async isAuthenticated(): Promise<boolean> {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) {
+      return false;
+    }
+
+    try {
+      await api.get('/users/me');
+      return true;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY); // Clean up invalid token
+      }
+      return false;
+    }
   },
   getToken(): string | null {
     return localStorage.getItem(TOKEN_STORAGE_KEY);
+  },
+  removeToken(): void {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }
 };
 

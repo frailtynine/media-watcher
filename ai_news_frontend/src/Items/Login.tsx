@@ -21,6 +21,7 @@ export default function Login() {
     });
     
     if (success) {
+      window.dispatchEvent(new Event('auth-login'));
       setCurrentComponent(<Dashboard />);
     } else {
       setError('Invalid credentials');
@@ -28,7 +29,7 @@ export default function Login() {
   };
 
   return (
-    <Box>
+    <Box maxW="400px" mx="auto" mt="100px" p="20px" borderWidth="1px" borderRadius="lg">
       <Field.Root invalid={!!error}>
         <Field.Label>Email</Field.Label>
           <Input 
