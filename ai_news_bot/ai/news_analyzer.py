@@ -9,7 +9,6 @@ from openai import AsyncOpenAI
 from rss_parser import RSSParser
 
 from ai_news_bot.ai.prompts import Prompts
-from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
@@ -63,7 +62,7 @@ def get_news(
     for item in rss_list:
         if item.link not in processed_news_links:
             processed_news_links.add(item.link)
-            news_to_process.append(item)  
+            news_to_process.append(item)
             # Prevent memory leak - keep only last 1000 links
             if len(processed_news_links) > 1000:
                 # Remove 200 oldest entries (simple cleanup)

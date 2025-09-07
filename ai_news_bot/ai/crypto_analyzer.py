@@ -1,17 +1,24 @@
+import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
+from openai import AsyncOpenAI
 
 from ai_news_bot.db.crud.crypto_task import crypto_task_crud
 from ai_news_bot.db.crud.telegram import telegram_user_crud
+from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
+from ai_news_bot.ai.prompts import Prompts
+from ai_news_bot.web.api.events.schema import EventResponse
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.crypto_task import CryptoTask
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +30,22 @@ logger = logging.getLogger(__name__)
 
 URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S %Z"
+TARGET_HOURS = [
+    (11, 0),   # 11:00 UTC
+    (12, 0),   # 12:00 UTC
+    (20, 0),   # 20:00 UTC
+    (20, 30),  # 20:30 UTC
+    (21, 0),   # 21:00 UTC
+]
+
+
+def should_run_ai_check() -> bool:
+    """Check if current UTC time matches any of the target hours."""
+    now = datetime.now(timezone.utc)
+    current_hour = now.hour
+    current_minute = now.minute
+
+    return (current_hour, current_minute) in TARGET_HOURS
 
 
 async def get_crypto_price(
@@ -116,15 +139,86 @@ async def crypto_check_price_from_db(
     return result
 
 
-# TODO: Finish the crypto task checking logic
-# async def check_crypto_tasks(slug: str, price: float) -> None:
-#     async with get_standalone_session() as session:
-#         tasks = await crypto_task_crud.get_active_tasks_by_ticker(
-#             session=session, ticker=slug,
-#         )
-#         for task in tasks:
-#             if task.type == CryptoTaskType.PRICE:
-#                 if
+async def get_crypto_events(
+    session: AsyncSession,
+    tickers: list[str],
+) -> list[EventResponse]:
+    """
+    Finds crypto events for a given ticker.
+
+    Args:
+        session (AsyncSession): The database session.
+        tickers (list[str]): The cryptocurrency ticker symbols to check.
+
+    Returns:
+        list: A list of active crypto events for the given tickers.
+    """
+    events = await crud_event.get_all_objects(
+        session=session,
+    )
+    tickers.extend(["ton", "eth", "doge", "btc", "sol"])
+    crypto_events = []
+    for event in events:
+        if any(ticker.lower() in event.title.lower() for ticker in tickers):
+            crypto_events.append(EventResponse.model_validate(event))
+    return crypto_events
+
+
+async def check_crypto_events_with_ai(
+    event: EventResponse,
+    results: list[tuple[str, float, datetime]],
+):
+    async with AsyncOpenAI(
+        api_key=settings.deepseek,
+        base_url="https://api.deepseek.com",
+    ) as client:
+        role = Prompts.ROLE_CRYPTO
+        crypto_prices = "\n".join(
+            f"{slug.capitalize()}: ${price:.4f} at "
+            f"{timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            for slug, price, timestamp in results
+        )
+        link = (
+            f"https://t.me/ft_rm_bot/futurum?"
+            f"startapp=event_{event.id}=source_futurumTg"
+        )
+        try:
+            response = await client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": role},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Here is the market title and description:\n"
+                            f"Title: {event.title}\n"
+                            f"Description: {event.description}\n\n"
+                            f"Link: {link}.\n"
+                            f"Here are the current crypto prices:\n"
+                            f"{crypto_prices}\n\n"
+                            f"Current time is "
+                            f"{datetime.now().strftime(
+                                '%Y-%m-%d %H:%M:%S UTC'
+                            )} UTC.\n"
+                        ),
+                    },
+                ],
+            )
+        except Exception as e:
+            logger.error(f"OpenAI API error: {e}")
+            return
+        answer = response.choices[0].message.content
+        if answer.lower() == "false":
+            logger.info(f"No action needed for event {event.id}")
+            return
+        else:
+            logger.info(
+                f"Action suggested for event {event.id}:"
+                f"{answer}"
+            )
+            await send_crypto_message(
+                text=answer,
+            )
 
 
 async def crypto_cron_job(tickers: list[str]) -> None:
@@ -132,33 +226,28 @@ async def crypto_cron_job(tickers: list[str]) -> None:
         results = await get_crypto_price(tickers=tickers)
         main_crypto_report = ""
         for slug, price, timestamp in results:
-            # Check if ticker value is close to target values from tasks
-            close_tasks = await crypto_check_price_from_db(slug, price)
-            if close_tasks:
-                for task in close_tasks:
-                    await send_crypto_message(
-                        text=(
-                            f"Warning! {slug} price of {price} "
-                            f"is close to {task.title} task endpoint of "
-                            f"{task.end_point}. End date of the "
-                            f"task is {task.end_date.strftime(TIME_FORMAT)}"
-                        ),
-                    )
-            # If no close tasks, prepare the update message.
-            else:
-                main_crypto_report += (
-                    f"{slug.capitalize()} is ${price:.4f}.\n"
-                    f"at {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}\n\n"
-                )
-        # Send unified crypto report.
-        if main_crypto_report:
-            await send_crypto_message(
-                text=main_crypto_report,
+            main_crypto_report += (
+                f"{slug.capitalize()} is ${price:.4f}.\n"
+                f"at {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}\n\n"
             )
+        await send_crypto_message(
+            text=main_crypto_report,
+        )
+        async with get_standalone_session() as session:
+            events = await get_crypto_events(session=session, tickers=tickers)
+            logger.info(f"Found {len(events)} crypto events to check.")
+        if True:
+            tasks = [
+                check_crypto_events_with_ai(event, results)
+                for event in events
+            ]
+            await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as e:
         print(f"Error fetching crypto price: {e}")
         return
 
 
 async def crypto_hourly_job() -> None:
-    await crypto_cron_job(tickers=["bitcoin", "toncoin", "ethereum", "dogecoin"])
+    await crypto_cron_job(
+        tickers=["bitcoin", "toncoin", "ethereum", "dogecoin", "solana"]
+    )

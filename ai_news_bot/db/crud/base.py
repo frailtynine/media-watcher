@@ -70,7 +70,7 @@ class BaseCRUD:
     async def get_all_objects(
         self,
         session: AsyncSession,
-        limit: int = 10,
+        limit: int = 1000,
         offset: int = 0,
         user: User | None = None,
     ) -> list[Base]:
