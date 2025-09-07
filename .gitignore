@@ -1,5 +1,13 @@
 ### Python template
 
+# macOS
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
 .idea/
 .vscode/
 # Byte-compiled / optimized / DLL files
