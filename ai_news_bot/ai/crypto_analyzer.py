@@ -145,6 +145,7 @@ async def check_crypto_events_with_ai(
             f"https://t.me/ft_rm_bot/futurum?"
             f"startapp=event_{event.id}=source_futurumTg"
         )
+        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
         try:
             response = await client.chat.completions.create(
                 model="deepseek-chat",
@@ -160,9 +161,7 @@ async def check_crypto_events_with_ai(
                             f"Here are the current crypto prices:\n"
                             f"{crypto_prices}\n\n"
                             f"Current time is "
-                            f"{datetime.now().strftime(
-                                '%Y-%m-%d %H:%M:%S UTC'
-                            )} UTC.\n"
+                            f"{date} UTC.\n"
                         ),
                     },
                 ],

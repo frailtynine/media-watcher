@@ -54,7 +54,7 @@ async def lifespan_setup(
     scheduler.add_job(
         crypto_hourly_job,
         "cron",
-        minute="0,10,11,12,13,30",
+        minute="0,30",
         id="crypto_hourly_job",
     )
     scheduler.start()
