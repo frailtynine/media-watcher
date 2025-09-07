@@ -33,7 +33,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     async with get_standalone_session() as session:
         await telegram_user_crud.create(session=session, obj_in=tg_user)
         await update.message.reply_text(
-            "Hello! I'm your AI News Bot. I'll notify you about relevant news.",
+            text=(
+                "Hello! I'm your AI News Bot. "
+                "I'll notify you about relevant news."
+            ),
         )
 
 
@@ -77,7 +80,9 @@ async def handle_callback_query(
             elif action == "irr":
                 news_item = parse_rsss_item(query)
                 if news_item is None:
-                    await query.message.reply_text("Failed to parse news item.")
+                    await query.message.reply_text(
+                        "Failed to parse news item."
+                    )
                     return
                 else:
                     await news_task_crud.add_false_positive(
@@ -231,6 +236,8 @@ async def send_message(chat_id: int, text: str):
         bot_app.bot.send_message(
             chat_id=chat_id,
             text=text,
+            parse_mode="Markdown",
+
         ),
         timeout=5.00,
     )
