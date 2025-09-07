@@ -233,11 +233,14 @@ async def news_analyzer(app: FastAPI) -> None:
                         chat_ids = await telegram_user_crud.get_all_chat_ids(
                             session=session,
                         )
-                        await crud_event.add_positive(
-                                news=news,
-                                event_id=task.id,
-                                session=session,
-                            )
+                        try:
+                            await crud_event.add_positive(
+                                    news=news,
+                                    event_id=task.id,
+                                    session=session,
+                                )
+                        except Exception as e:
+                            logger.error(f"Error adding positive event: {e}")
                     try:
                         post_text = await compose_post(news, task)
                         logger.info(f"Composed post: {post_text}")
