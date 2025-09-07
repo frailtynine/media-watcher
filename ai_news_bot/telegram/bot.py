@@ -3,12 +3,7 @@ import logging
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes
-)
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.telegram import telegram_user_crud
@@ -34,8 +29,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await telegram_user_crud.create(session=session, obj_in=tg_user)
         await update.message.reply_text(
             text=(
-                "Hello! I'm your AI News Bot. "
-                "I'll notify you about relevant news."
+                "Hello! I'm your AI News Bot. I'll notify you about relevant news."
             ),
         )
 
@@ -80,9 +74,7 @@ async def handle_callback_query(
             elif action == "irr":
                 news_item = parse_rsss_item(query)
                 if news_item is None:
-                    await query.message.reply_text(
-                        "Failed to parse news item."
-                    )
+                    await query.message.reply_text("Failed to parse news item.")
                     return
                 else:
                     await news_task_crud.add_false_positive(
@@ -158,7 +150,9 @@ async def process_task_message_queue() -> None:
 
 
 async def queue_task_message(
-    chat_id: int, text: str, task_id: str | None = None,
+    chat_id: int,
+    text: str,
+    task_id: str | None = None,
 ) -> None:
     """
     Add a message to the queue for sending.
@@ -211,7 +205,7 @@ async def send_task_message(
             text=text,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
-            parse_mode="Markdown"
+            parse_mode="Markdown",
         ),
         timeout=5.00,
     )
@@ -237,7 +231,6 @@ async def send_message(chat_id: int, text: str):
             chat_id=chat_id,
             text=text,
             parse_mode="Markdown",
-
         ),
         timeout=5.00,
     )

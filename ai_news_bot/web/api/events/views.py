@@ -2,14 +2,14 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.dependencies import get_db_session
 from ai_news_bot.db.models.users import User, current_active_user
+from ai_news_bot.settings import settings
 from ai_news_bot.web.api.events.schema import (
     EventCreate,
     EventResponse,
 )
-from ai_news_bot.db.crud.events import crud_event
-from ai_news_bot.settings import settings
 
 router = APIRouter()
 
@@ -31,23 +31,23 @@ async def refresh_events(
     :return: A message indicating the refresh status.
     """
     cookies = {
-        "session_id": settings.session_id
+        "session_id": settings.session_id,
     }
     async with httpx.AsyncClient() as client:
         response = await client.get(
             FUTURUM_URL,
-            cookies=cookies
+            cookies=cookies,
         )
     if response.status_code != 200:
         raise HTTPException(
             status_code=response.status_code,
-            detail="Failed to fetch events from Futurum API"
+            detail="Failed to fetch events from Futurum API",
         )
     for item in response.json():
         event = EventCreate(**item)
         if not await crud_event.get_object_by_id(
             session=session,
-            obj_id=event.id
+            obj_id=event.id,
         ):
             await crud_event.create(session=session, obj_in=event)
     refreshed_ids = [
@@ -55,7 +55,7 @@ async def refresh_events(
     ]
     all_events = await crud_event.delete_old_events(
         session=session,
-        actual_events_ids=refreshed_ids
+        actual_events_ids=refreshed_ids,
     )
     return all_events
 
@@ -72,7 +72,7 @@ async def get_events(
     """
     events = await crud_event.get_all_objects(
         session=session,
-        limit=1000
+        limit=1000,
     )
     return events
 
@@ -115,7 +115,7 @@ async def update_event(
     event = await crud_event.update(
         session=session,
         obj_id=event_id,
-        obj_in=event_data
+        obj_in=event_data,
     )
     return event
 
@@ -134,7 +134,7 @@ async def delete_event(
     """
     success = await crud_event.delete_object_by_id(
         session=session,
-        obj_id=event_id
+        obj_id=event_id,
     )
     if not success:
         raise HTTPException(status_code=404, detail="Event not found")

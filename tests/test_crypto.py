@@ -1,14 +1,15 @@
 """Tests for crypto analyzer get_crypto_events function."""
-import pytest
-from datetime import datetime
-import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
+from datetime import datetime
+
+import pytest
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.ai.crypto_analyzer import get_crypto_events
-from ai_news_bot.web.api.events.schema import EventCreate
 from ai_news_bot.db.crud.events import crud_event
+from ai_news_bot.web.api.events.schema import EventCreate
 
 
 @pytest.mark.anyio
@@ -53,14 +54,12 @@ async def test_get_crypto_events_finds_matching_events(
     )
 
     # Create events in database using CRUD
-    bitcoin_db_event = await crud_event.create(
-        session=dbsession, obj_in=bitcoin_event
-    )
+    bitcoin_db_event = await crud_event.create(session=dbsession, obj_in=bitcoin_event)
     ethereum_db_event = await crud_event.create(
-        session=dbsession, obj_in=ethereum_event
+        session=dbsession, obj_in=ethereum_event,
     )
     non_crypto_db_event = await crud_event.create(
-        session=dbsession, obj_in=non_crypto_event
+        session=dbsession, obj_in=non_crypto_event,
     )
 
     # Set events as active (is_active defaults to False)
@@ -68,9 +67,7 @@ async def test_get_crypto_events_finds_matching_events(
     ethereum_db_event.is_active = True
     non_crypto_db_event.is_active = True
 
-    dbsession.add_all([
-        bitcoin_db_event, ethereum_db_event, non_crypto_db_event
-    ])
+    dbsession.add_all([bitcoin_db_event, ethereum_db_event, non_crypto_db_event])
     await dbsession.commit()
 
     # Test with bitcoin and ethereum tickers
@@ -115,9 +112,7 @@ async def test_get_crypto_events_case_insensitive_matching(
     await crud_event.create(session=dbsession, obj_in=mixed_case_event)
 
     # Set event as active
-    event = await crud_event.get_object_by_id(
-        session=dbsession, obj_id=event_id
-    )
+    event = await crud_event.get_object_by_id(session=dbsession, obj_id=event_id)
     event.is_active = True
     dbsession.add(event)
     await dbsession.commit()
@@ -211,9 +206,7 @@ async def test_get_crypto_events_partial_ticker_matching(
     await crud_event.create(session=dbsession, obj_in=partial_match_event)
 
     # Set event as active
-    event = await crud_event.get_object_by_id(
-        session=dbsession, obj_id=event_id
-    )
+    event = await crud_event.get_object_by_id(session=dbsession, obj_id=event_id)
     event.is_active = True
     dbsession.add(event)
     await dbsession.commit()

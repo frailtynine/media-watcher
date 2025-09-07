@@ -54,8 +54,7 @@ def get_news(
     ]
     one_hour_ago = datetime.now() - timedelta(hours=1)
     rss_list = [
-        item for item in rss_list
-        if item.pub_date.replace(tzinfo=None) > one_hour_ago
+        item for item in rss_list if item.pub_date.replace(tzinfo=None) > one_hour_ago
     ]
     rss_list = rss_list[:50]
     news_to_process = []
@@ -141,8 +140,7 @@ async def compose_post(
     :return: Post text.
     """
     positives = "\n".join(
-        f"- {item['title']} \n\n {item['description']}"
-        for item in event.positives
+        f"- {item['title']} \n\n {item['description']}" for item in event.positives
     )
     async with AsyncOpenAI(
         api_key=settings.deepseek,
@@ -214,8 +212,7 @@ async def news_analyzer(app: FastAPI) -> None:
             for news in news_to_process:
                 for task in tasks:
                     logger.info(
-                        f"Processing news: {news.title} "
-                        f"for task: {task.title}"
+                        f"Processing news: {news.title} for task: {task.title}",
                     )
                     try:
                         is_relevant = await asyncio.wait_for(
@@ -239,10 +236,10 @@ async def news_analyzer(app: FastAPI) -> None:
                     if is_relevant:
                         try:
                             await crud_event.add_positive(
-                                    news=news,
-                                    event_id=task.id,
-                                    session=session,
-                                )
+                                news=news,
+                                event_id=task.id,
+                                session=session,
+                            )
                         except Exception as e:
                             logger.error(f"Error adding positive event: {e}")
                         try:
@@ -255,9 +252,7 @@ async def news_analyzer(app: FastAPI) -> None:
                             )
                             post_text = "Error composing post."
                         description_text = (
-                            f"{news.description}\n\n"
-                            if news.description
-                            else ""
+                            f"{news.description}\n\n" if news.description else ""
                         )
                         for chat_id in chat_ids:
                             await queue_task_message(
