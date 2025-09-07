@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.db.crud.base import BaseCRUD
 from ai_news_bot.db.models.events import Event
@@ -10,6 +10,7 @@ from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 
 class EventCRUD(BaseCRUD):
     """CRUD operations for Event model."""
+
     async def _add_item_to_list(
         self,
         news: RSSItemSchema,
@@ -90,18 +91,18 @@ class EventCRUD(BaseCRUD):
         :param actual_events_ids: List of actual event IDs.
         """
         stmt = select(self.model).where(
-            self.model.id.not_in(actual_events_ids)
+            self.model.id.not_in(actual_events_ids),
         )
         events_to_delete = await session.execute(stmt)
         events_to_delete = events_to_delete.scalars().all()
         for event in events_to_delete:
             await self.delete_object_by_id(
                 session=session,
-                obj_id=event.id
+                obj_id=event.id,
             )
         all_events = await self.get_all_objects(
             session=session,
-            limit=1000
+            limit=1000,
         )
         sorted_events = sorted(
             all_events,

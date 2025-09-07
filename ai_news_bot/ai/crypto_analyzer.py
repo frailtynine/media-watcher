@@ -1,23 +1,18 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
 from openai import AsyncOpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_news_bot.db.crud.crypto_task import crypto_task_crud
-from ai_news_bot.db.crud.telegram import telegram_user_crud
+from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.db.crud.events import crud_event
+from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
-from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.web.api.events.schema import EventResponse
-
-if TYPE_CHECKING:
-    from ai_news_bot.db.models.crypto_task import CryptoTask
 
 
 logging.basicConfig(
@@ -31,11 +26,13 @@ logger = logging.getLogger(__name__)
 URL = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S %Z"
 TARGET_HOURS = [
-    (11, 0),   # 11:00 UTC
-    (12, 0),   # 12:00 UTC
-    (20, 0),   # 20:00 UTC
+    (11, 0),  # 11:00 UTC
+    (12, 0),  # 12:00 UTC
+    (15, 0),  # 15:00 UTC
+    (18, 30),  # 18:30 UTC
+    (20, 0),  # 20:00 UTC
     (20, 30),  # 20:30 UTC
-    (21, 0),   # 21:00 UTC
+    (21, 0),  # 21:00 UTC
 ]
 
 
@@ -103,40 +100,6 @@ async def send_crypto_message(text: str) -> None:
                 await queue_task_message(chat_id=chat_id, text=text)
             except Exception as e:
                 logger.error(f"Failed to send message to chat {chat_id}: {e}")
-
-
-async def crypto_check_price_from_db(
-    ticker: str,
-    price: float,
-    percentage: float = 0.05,
-) -> list["CryptoTask"]:
-    """
-    Checks active crypto tasks for a given ticker
-    where the current price is within 10% of the task's
-    end point.
-
-    Args:
-        ticker (str): The cryptocurrency ticker symbol to check.
-        price (float): The current price of the cryptocurrency.
-    Returns:
-        list: A list of active tasks where the price is within 10%
-              of the task's end point.
-    Raises:
-        Any exceptions raised by the database session or CRUD operations.
-    """
-
-    async with get_standalone_session() as session:
-        tasks = await crypto_task_crud.get_active_tasks_by_ticker(
-            session=session,
-            ticker=ticker,
-        )
-    result = []
-    for task in tasks:
-        # Check if the price is within the specified percentage
-        # of the task's end point
-        if abs(price - task.end_point) / task.end_point < percentage:
-            result.append(task)
-    return result
 
 
 async def get_crypto_events(
@@ -212,10 +175,7 @@ async def check_crypto_events_with_ai(
             logger.info(f"No action needed for event {event.id}")
             return
         else:
-            logger.info(
-                f"Action suggested for event {event.id}:"
-                f"{answer}"
-            )
+            logger.info(f"Action suggested for event {event.id}:{answer}")
             await send_crypto_message(
                 text=answer,
             )
@@ -236,7 +196,7 @@ async def crypto_cron_job(tickers: list[str]) -> None:
         async with get_standalone_session() as session:
             events = await get_crypto_events(session=session, tickers=tickers)
             logger.info(f"Found {len(events)} crypto events to check.")
-        if True:
+        if should_run_ai_check():
             tasks = [
                 check_crypto_events_with_ai(event, results)
                 for event in events
@@ -249,5 +209,5 @@ async def crypto_cron_job(tickers: list[str]) -> None:
 
 async def crypto_hourly_job() -> None:
     await crypto_cron_job(
-        tickers=["bitcoin", "toncoin", "ethereum", "dogecoin", "solana"]
+        tickers=["bitcoin", "toncoin", "ethereum", "dogecoin", "solana"],
     )

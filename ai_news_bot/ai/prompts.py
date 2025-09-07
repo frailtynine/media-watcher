@@ -1,4 +1,3 @@
-
 class Prompts:
     POST_EXAMPLE_ONE = """
         There’s no missing minute in Epstein jail tape: CBS
