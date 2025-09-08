@@ -1,16 +1,23 @@
 import asyncio
 import logging
 from typing import Optional
+import json
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes
+)
 
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
-from ai_news_bot.telegram.utils import parse_rsss_item
+from ai_news_bot.web.api.news_task.schema import RSSItemSchema
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +26,10 @@ bot_app: Optional[Application] = None
 task_message_queue: asyncio.Queue = asyncio.Queue()
 
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def start_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Handle the /start command."""
     tg_user = TelegramUser(
         tg_id=update.message.from_user.id,
@@ -29,7 +39,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await telegram_user_crud.create(session=session, obj_in=tg_user)
         await update.message.reply_text(
             text=(
-                "Hello! I'm your AI News Bot. I'll notify you about relevant news."
+                "Hello! I'm your AI News Bot."
+                " You are subscribed to news updates."
             ),
         )
 
@@ -63,25 +74,17 @@ async def handle_callback_query(
     callback_data = query.data
     await query.answer()
     async with get_standalone_session() as session:
-        if ":" in callback_data:
-            # Parse callback data (format: "action:id")
-            action, task_id = callback_data.split(":", 1)
-            if action == "stop":
-                await news_task_crud.stop_task(
-                    news_task_id=int(task_id),
-                    session=session,
-                )
-            elif action == "irr":
-                news_item = parse_rsss_item(query)
-                if news_item is None:
-                    await query.message.reply_text("Failed to parse news item.")
-                    return
-                else:
-                    await news_task_crud.add_false_positive(
-                        news=news_item,
-                        news_task_id=int(task_id),
-                        session=session,
-                    )
+        if callback_data["action"] == "stop":
+            await news_task_crud.stop_task(
+                news_task_id=int(callback_data["task_id"]),
+                session=session,
+            )
+        elif callback_data["action"] == "irr":
+            await news_task_crud.add_false_positive(
+                news=callback_data["news"],
+                news_task_id=int(callback_data["task_id"]),
+                session=session,
+            )
         else:
             logger.warning(f"Invalid callback data format: {callback_data}")
 
@@ -96,8 +99,11 @@ async def setup_bot() -> Application:
 
     # Create application
     try:
-        bot_app = Application.builder().token(settings.tg_bot_token).build()
-
+        bot_app = Application.builder().token(
+            settings.tg_bot_token
+        ).arbitrary_callback_data(
+            True
+        ).build()
         # Add handlers
         bot_app.add_handler(CommandHandler("start", start_command))
         bot_app.add_handler(CommandHandler("stop", stop_command))
@@ -137,6 +143,7 @@ async def process_task_message_queue() -> None:
                     chat_id=message_data["chat_id"],
                     text=message_data["text"],
                     task_id=message_data["task_id"],
+                    news=message_data["news"]
                 )
             else:
                 await send_message(
@@ -153,6 +160,7 @@ async def queue_task_message(
     chat_id: int,
     text: str,
     task_id: str | None = None,
+    news: RSSItemSchema | None = None,
 ) -> None:
     """
     Add a message to the queue for sending.
@@ -167,6 +175,7 @@ async def queue_task_message(
             "chat_id": chat_id,
             "text": text,
             "task_id": task_id,
+            "news": news,
         },
     )
 
@@ -175,6 +184,7 @@ async def send_task_message(
     chat_id: int,
     text: str,
     task_id: str,
+    news: RSSItemSchema
 ) -> int:
     """
     Send a message with "stop" and "irrelevant" buttons.
@@ -190,11 +200,23 @@ async def send_task_message(
     global bot_app
     if bot_app is None:
         raise RuntimeError("Bot not initialized")
+    stop_callback = {
+        "action": "stop",
+        "task_id": task_id
+    }
+    irr_callback = {
+        "action": "irr",
+        "task_id": task_id,
+        "news": news,
+    }
 
     keyboard = [
         [
-            InlineKeyboardButton("Stop", callback_data=f"stop:{task_id}"),
-            InlineKeyboardButton("Irrelevant", callback_data=f"irr:{task_id}"),
+            InlineKeyboardButton("Stop", callback_data=stop_callback),
+            InlineKeyboardButton(
+                "Irrelevant",
+                callback_data=irr_callback
+            ),
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
