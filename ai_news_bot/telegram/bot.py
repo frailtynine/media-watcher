@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from typing import Optional
-import json
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
