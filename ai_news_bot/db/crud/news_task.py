@@ -11,7 +11,7 @@ class NewsTaskCRUD(BaseCRUD):
     async def _add_item_to_list(
         self,
         news: RSSItemSchema,
-        news_task_id: int,
+        news_task_id,
         session: AsyncSession,
         list_attribute: str,
     ) -> NewsTask:
@@ -38,7 +38,7 @@ class NewsTaskCRUD(BaseCRUD):
     async def add_false_positive(
         self,
         news: RSSItemSchema,
-        news_task_id: int,
+        news_task_id,
         session: AsyncSession,
     ):
         return await self._add_item_to_list(

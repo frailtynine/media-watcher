@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +42,7 @@ class EventCRUD(BaseCRUD):
     async def add_false_positive(
         self,
         news: RSSItemSchema,
-        event_id: int,
+        event_id: int | uuid.UUID,
         session: AsyncSession,
     ):
         return await self._add_item_to_list(

@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -54,7 +55,7 @@ class BaseCRUD:
     async def get_object_by_id(
         self,
         session: AsyncSession,
-        obj_id: int,
+        obj_id: int | uuid.UUID,
         user: User | None = None,
     ) -> Base | None:
         """Get object by ID."""
@@ -101,7 +102,7 @@ class BaseCRUD:
     async def delete_object_by_id(
         self,
         session: AsyncSession,
-        obj_id: int | str,
+        obj_id: int | str | uuid.UUID,
         user: User | None = None,
     ) -> bool:
         """Delete object by ID."""
@@ -126,7 +127,7 @@ class BaseCRUD:
 
     async def stop_task(
         self,
-        news_task_id: int,
+        news_task_id: int | uuid.UUID,
         session: AsyncSession,
     ):
         """Stop a Task by ID.

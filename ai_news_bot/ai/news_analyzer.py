@@ -264,5 +264,6 @@ async def news_analyzer(app: FastAPI) -> None:
                                     f"Post suggestion: {post_text}"
                                 ),
                                 task_id=str(task.id),
+                                news=news,
                             )
         await asyncio.sleep(60)

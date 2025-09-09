@@ -10,7 +10,7 @@ from telegram.ext import (
     ContextTypes
 )
 
-from ai_news_bot.db.crud.news_task import news_task_crud
+from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
@@ -72,16 +72,18 @@ async def handle_callback_query(
     query = update.callback_query
     callback_data = query.data
     await query.answer()
+    logger.info(f"Received callback data: {callback_data}")
+    logger.info(f"news: {callback_data.get('news')}")
     async with get_standalone_session() as session:
         if callback_data["action"] == "stop":
-            await news_task_crud.stop_task(
-                news_task_id=int(callback_data["task_id"]),
+            await crud_event.stop_task(
+                news_task_id=callback_data["task_id"],
                 session=session,
             )
         elif callback_data["action"] == "irr":
-            await news_task_crud.add_false_positive(
+            await crud_event.add_false_positive(
                 news=callback_data["news"],
-                news_task_id=int(callback_data["task_id"]),
+                event_id=callback_data["task_id"],
                 session=session,
             )
         else:
