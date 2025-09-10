@@ -4,8 +4,9 @@ import axios from 'axios';
 import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event } from './interface';
 
 
-// const API_BASE_URL = '/api';
-const API_BASE_URL = 'http://localhost:8030/api';
+const API_BASE_URL = '/api';
+// FOR LOCAL DEBUG
+// const API_BASE_URL = 'http://localhost:8030/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
