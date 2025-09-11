@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ai_news_bot.telegram.utils import parse_rsss_item
+from ai_news_bot.ai.utils import parse_rsss_item
 
 
 @pytest.mark.parametrize(

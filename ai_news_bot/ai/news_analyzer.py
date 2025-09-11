@@ -131,51 +131,6 @@ async def process_news(
             return False
 
 
-async def compose_post(
-    news: RSSItemSchema,
-    event: "Event",
-) -> str:
-    """
-    Composes a post for the given news item and event.
-    :return: Post text.
-    """
-    positives = "\n".join(
-        f"- {item['title']} \n\n {item['description']}" for item in event.positives
-    )
-    async with AsyncOpenAI(
-        api_key=settings.deepseek,
-        base_url="https://api.deepseek.com",
-        timeout=50.0,
-    ) as client:
-        try:
-            response = await client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": Prompts.SUGGEST_POST,
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"News: {news.title} \n {news.description} \n\n"
-                            f"Market: {event.title} \n\n"
-                            f"{event.rules}\n\n"
-                            f"Link: {event.link}\n\n"
-                            f"Previous relevant news: {positives}"
-                        ),
-                    },
-                ],
-            )
-            logger.info(
-                f"Composed post: {response.choices[0].message.content}",
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            logger.error(f"Error composing post: {e}")
-            return "Error composing post, please check logs."
-
-
 async def news_analyzer(app: FastAPI) -> None:
     processed_news_links: set[str] = set()
     while True:
@@ -242,15 +197,6 @@ async def news_analyzer(app: FastAPI) -> None:
                             )
                         except Exception as e:
                             logger.error(f"Error adding positive event: {e}")
-                        try:
-                            post_text = await compose_post(news, task)
-                            logger.info(f"Composed post: {post_text}")
-                        except asyncio.TimeoutError:
-                            logger.error(
-                                f"Composing post for news {news.title} "
-                                f"and task {task.title} timed out.",
-                            )
-                            post_text = "Error composing post."
                         description_text = (
                             f"{news.description}\n\n" if news.description else ""
                         )
@@ -261,7 +207,6 @@ async def news_analyzer(app: FastAPI) -> None:
                                     f"News: [{news.title}]({news.link})\n"
                                     f"{description_text}"
                                     f"Market: [{task.title}]({task.link})\n\n"
-                                    f"Post suggestion: {post_text}"
                                 ),
                                 task_id=str(task.id),
                                 news=news,

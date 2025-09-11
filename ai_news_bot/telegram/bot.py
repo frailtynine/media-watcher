@@ -16,6 +16,7 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
+from ai_news_bot.ai.utils import compose_post
 
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,29 @@ async def handle_callback_query(
                 event_id=callback_data["task_id"],
                 session=session,
             )
+        elif callback_data["action"] == "post":
+            news = callback_data.get("news")
+            event = await crud_event.get_object_by_id(
+                obj_id=callback_data["task_id"],
+                session=session,
+            )
+            if news:
+                post = await compose_post(
+                    news=news,
+                    event=event
+                )
+                if post:
+                    await send_message(
+                        chat_id=query.message.chat.id,
+                        text=post,
+                    )
+                else:
+                    await send_message(
+                        chat_id=query.message.chat.id,
+                        text="Failed to generate post.",
+                    )
+            else:
+                logger.warning("No news data found in callback.")
         else:
             logger.warning(f"Invalid callback data format: {callback_data}")
 
@@ -210,6 +234,11 @@ async def send_task_message(
         "task_id": task_id,
         "news": news,
     }
+    post_callback = {
+        "action": "post",
+        "task_id": task_id,
+        "news": news,
+    }
 
     keyboard = [
         [
@@ -219,6 +248,12 @@ async def send_task_message(
                 callback_data=irr_callback
             ),
         ],
+        [
+            InlineKeyboardButton(
+                "Compose Post",
+                callback_data=post_callback
+            )
+        ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
