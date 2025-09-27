@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_news_bot.web.api.prompt.schema import PromptRead, PostExample
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.dependencies import get_db_session
 from ai_news_bot.db.models.users import User, current_active_user
-from ai_news_bot.db.crud.prompt import crud_prompt
-
+from ai_news_bot.web.api.prompt.schema import PostExample, PromptRead
 
 router = APIRouter()
 
@@ -42,7 +41,7 @@ async def update_prompt(
     updated_prompt = await crud_prompt.update(
         session=session,
         obj_id=prompt.id,
-        obj_in=prompt
+        obj_in=prompt,
     )
     return updated_prompt
 
@@ -96,7 +95,7 @@ async def delete_post_example(
     try:
         updated_prompt = await crud_prompt.remove_post_example(
             session,
-            example.example
+            example.example,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

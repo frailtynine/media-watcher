@@ -8,8 +8,8 @@ from fastapi import FastAPI
 from openai import AsyncOpenAI
 from rss_parser import RSSParser
 
-from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.events import crud_event
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
@@ -144,7 +144,7 @@ async def compose_post(
     )
     async with get_standalone_session() as session:
         prompt = await crud_prompt.get_or_create(
-            session=session
+            session=session,
         )
     async with AsyncOpenAI(
         api_key=settings.deepseek,
@@ -214,7 +214,7 @@ async def news_analyzer(app: FastAPI) -> None:
         logger.info(f"Found {len(tasks)} active tasks")
         async with get_standalone_session() as session:
             prompt = await crud_prompt.get_or_create(
-                session=session
+                session=session,
             )
             for news in news_to_process:
                 for task in tasks:

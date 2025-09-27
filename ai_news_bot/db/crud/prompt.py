@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
+from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.db.crud.base import BaseCRUD
 from ai_news_bot.db.models.prompt import Prompt
-from ai_news_bot.ai.prompts import Prompts
 
 
 class CRUDPrompt(BaseCRUD):

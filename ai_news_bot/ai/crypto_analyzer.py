@@ -6,14 +6,13 @@ import httpx
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.events import crud_event
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import queue_task_message
 from ai_news_bot.web.api.events.schema import EventResponse
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -137,7 +136,7 @@ async def check_crypto_events_with_ai(
     ) as client:
         async with get_standalone_session() as session:
             prompt = await crud_prompt.get_or_create(
-                session=session
+                session=session,
             )
         role = prompt.crypto_role
         crypto_prices = "\n".join(
@@ -149,7 +148,7 @@ async def check_crypto_events_with_ai(
             f"https://t.me/ft_rm_bot/futurum?"
             f"startapp=event_{event.id}=source_futurumTg"
         )
-        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
         try:
             response = await client.chat.completions.create(
                 model="deepseek-chat",
@@ -200,10 +199,7 @@ async def crypto_cron_job(tickers: list[str]) -> None:
             events = await get_crypto_events(session=session, tickers=tickers)
             logger.info(f"Found {len(events)} crypto events to check.")
         if should_run_ai_check():
-            tasks = [
-                check_crypto_events_with_ai(event, results)
-                for event in events
-            ]
+            tasks = [check_crypto_events_with_ai(event, results) for event in events]
             await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as e:
         print(f"Error fetching crypto price: {e}")

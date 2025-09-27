@@ -3,12 +3,7 @@ import logging
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (
-    Application,
-    CallbackQueryHandler,
-    CommandHandler,
-    ContextTypes
-)
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
@@ -16,7 +11,6 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +21,7 @@ task_message_queue: asyncio.Queue = asyncio.Queue()
 
 async def start_command(
     update: Update,
-    context: ContextTypes.DEFAULT_TYPE
+    context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Handle the /start command."""
     tg_user = TelegramUser(
@@ -38,8 +32,7 @@ async def start_command(
         await telegram_user_crud.create(session=session, obj_in=tg_user)
         await update.message.reply_text(
             text=(
-                "Hello! I'm your AI News Bot."
-                " You are subscribed to news updates."
+                "Hello! I'm your AI News Bot. You are subscribed to news updates."
             ),
         )
 
@@ -100,11 +93,16 @@ async def setup_bot() -> Application:
 
     # Create application
     try:
-        bot_app = Application.builder().token(
-            settings.tg_bot_token
-        ).arbitrary_callback_data(
-            True
-        ).build()
+        bot_app = (
+            Application.builder()
+            .token(
+                settings.tg_bot_token,
+            )
+            .arbitrary_callback_data(
+                True,
+            )
+            .build()
+        )
         # Add handlers
         bot_app.add_handler(CommandHandler("start", start_command))
         bot_app.add_handler(CommandHandler("stop", stop_command))
@@ -144,7 +142,7 @@ async def process_task_message_queue() -> None:
                     chat_id=message_data["chat_id"],
                     text=message_data["text"],
                     task_id=message_data["task_id"],
-                    news=message_data["news"]
+                    news=message_data["news"],
                 )
             else:
                 await send_message(
@@ -185,7 +183,7 @@ async def send_task_message(
     chat_id: int,
     text: str,
     task_id: str,
-    news: RSSItemSchema
+    news: RSSItemSchema,
 ) -> int:
     """
     Send a message with "stop" and "irrelevant" buttons.
@@ -203,7 +201,7 @@ async def send_task_message(
         raise RuntimeError("Bot not initialized")
     stop_callback = {
         "action": "stop",
-        "task_id": task_id
+        "task_id": task_id,
     }
     irr_callback = {
         "action": "irr",
@@ -216,7 +214,7 @@ async def send_task_message(
             InlineKeyboardButton("Stop", callback_data=stop_callback),
             InlineKeyboardButton(
                 "Irrelevant",
-                callback_data=irr_callback
+                callback_data=irr_callback,
             ),
         ],
     ]
