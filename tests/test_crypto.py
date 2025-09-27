@@ -56,10 +56,12 @@ async def test_get_crypto_events_finds_matching_events(
     # Create events in database using CRUD
     bitcoin_db_event = await crud_event.create(session=dbsession, obj_in=bitcoin_event)
     ethereum_db_event = await crud_event.create(
-        session=dbsession, obj_in=ethereum_event,
+        session=dbsession,
+        obj_in=ethereum_event,
     )
     non_crypto_db_event = await crud_event.create(
-        session=dbsession, obj_in=non_crypto_event,
+        session=dbsession,
+        obj_in=non_crypto_event,
     )
 
     # Set events as active (is_active defaults to False)
@@ -67,7 +69,9 @@ async def test_get_crypto_events_finds_matching_events(
     ethereum_db_event.is_active = True
     non_crypto_db_event.is_active = True
 
-    dbsession.add_all([bitcoin_db_event, ethereum_db_event, non_crypto_db_event])
+    dbsession.add_all(
+        [bitcoin_db_event, ethereum_db_event, non_crypto_db_event],
+    )
     await dbsession.commit()
 
     # Test with bitcoin and ethereum tickers

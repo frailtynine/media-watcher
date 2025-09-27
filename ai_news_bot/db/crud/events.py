@@ -1,5 +1,5 @@
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,10 +29,14 @@ class EventCRUD(BaseCRUD):
 
         # Get current list and add new item
         current_list = getattr(event, list_attribute)
-        setattr(event, list_attribute, [
-            *current_list,
-            news.model_dump(mode="json"),
-        ])
+        setattr(
+            event,
+            list_attribute,
+            [
+                *current_list,
+                news.model_dump(mode="json"),
+            ],
+        )
 
         session.add(event)
         await session.commit()
@@ -46,7 +50,10 @@ class EventCRUD(BaseCRUD):
         session: AsyncSession,
     ):
         return await self._add_item_to_list(
-            news, event_id, session, "false_positives",
+            news,
+            event_id,
+            session,
+            "false_positives",
         )
 
     async def add_positive(
@@ -56,7 +63,10 @@ class EventCRUD(BaseCRUD):
         session: AsyncSession,
     ) -> Event:
         return await self._add_item_to_list(
-            news, event_id, session, "positives",
+            news,
+            event_id,
+            session,
+            "positives",
         )
 
     async def get_false_positives(

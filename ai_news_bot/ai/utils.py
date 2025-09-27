@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from ai_news_bot.ai.prompts import Prompts
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.settings import settings
+from ai_news_bot.db.dependencies import get_standalone_session
+from ai_news_bot.db.crud.prompt import crud_prompt
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.events import Event
@@ -29,6 +31,8 @@ async def compose_post(
         f"- {item['title']} \n\n {item['description']}" 
         for item in event.positives
     )
+    async with get_standalone_session() as session:
+        prompt = await crud_prompt.get_or_create(session)
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
@@ -40,7 +44,7 @@ async def compose_post(
                 messages=[
                     {
                         "role": "system",
-                        "content": Prompts.SUGGEST_POST,
+                        "content": prompt.suggest_post,
                     },
                     {
                         "role": "user",

@@ -36,7 +36,7 @@ class Prompts:
         Do not return anything else.
     """
 
-    SUGGEST_POST = f"""
+    SUGGEST_POST = """
         You are an assistant for an SMM manager at Futurum,
         Polymarket-style prediction platform.
         Your goal is to suggest a post for the given breaking news item.
@@ -46,10 +46,8 @@ class Prompts:
         than a social media post. Use as much detail from the news as possible.
         Avoid rhetorical questions and broad statements.
         Check the previous relevant news for the market for the context,
-        they will be provided below.
-        Check the examples of posts for the context:
-        {POST_EXAMPLE_ONE}\n\n
-        {POST_EXAMPLE_TWO}\n\n
+        they will be provided below. Also, check the examples of good posts,
+        also provided below.
         Return the post text in English, formatted in markdown.
         Do not return anything else.
     """
