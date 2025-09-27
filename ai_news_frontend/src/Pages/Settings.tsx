@@ -2,7 +2,7 @@ import { Box, Heading, Button, Textarea, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import type { Prompt } from "../interface";
 import { promptApi } from "../api";
-import { set, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 
 export default function Settings() {

@@ -387,7 +387,7 @@ class promptAPI extends CrudApi<Prompt> {
     return await this.customCall<Prompt>('GET', '');
   }
 
-  async update(id: number | string, data: Partial<Prompt>): Promise<Prompt | null> {
+  async update(_id: number | string, data: Partial<Prompt>): Promise<Prompt | null> {
     return this.customCall<Prompt>('PUT', '', data);
   }
 };
