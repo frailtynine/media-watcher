@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from openai import AsyncOpenAI
 from rss_parser import RSSParser
 
-from ai_news_bot.ai.prompts import Prompts
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
@@ -142,6 +142,10 @@ async def compose_post(
     positives = "\n".join(
         f"- {item['title']} \n\n {item['description']}" for item in event.positives
     )
+    async with get_standalone_session() as session:
+        prompt = await crud_prompt.get_or_create(
+            session=session
+        )
     async with AsyncOpenAI(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
@@ -153,7 +157,7 @@ async def compose_post(
                 messages=[
                     {
                         "role": "system",
-                        "content": Prompts.SUGGEST_POST,
+                        "content": prompt.suggest_post,
                     },
                     {
                         "role": "user",
@@ -209,17 +213,21 @@ async def news_analyzer(app: FastAPI) -> None:
             continue
         logger.info(f"Found {len(tasks)} active tasks")
         async with get_standalone_session() as session:
+            prompt = await crud_prompt.get_or_create(
+                session=session
+            )
             for news in news_to_process:
                 for task in tasks:
                     logger.info(
                         f"Processing news: {news.title} for task: {task.title}",
                     )
                     try:
+
                         is_relevant = await asyncio.wait_for(
                             process_news(
                                 news=news,
                                 event=task,
-                                initial_prompt=Prompts.ROLE,
+                                initial_prompt=prompt.role,
                             ),
                             timeout=10.0,
                         )

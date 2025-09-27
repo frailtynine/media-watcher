@@ -8,6 +8,7 @@ from ai_news_bot.web.api import (
     news_task,
     redis,
     users,
+    prompt
 )
 
 api_router = APIRouter()
@@ -22,4 +23,5 @@ api_router.include_router(
     crypto_task.router, prefix="/crypto_task", tags=["crypto_task"],
 )
 api_router.include_router(events.router, prefix="/events", tags=["events"])
+api_router.include_router(prompt.router, prefix="/prompt", tags=["prompt"])
 # Note: The order of inclusion matters for path matching.

@@ -90,3 +90,15 @@ export interface Event {
   rules: string;
   is_active: boolean;
 }
+
+export interface PromptExample {
+  example: string;
+}
+
+export interface Prompt {
+  id: number;
+  role: string;
+  crypto_role: string;
+  suggest_post: string;
+  post_examples: string[];
+}

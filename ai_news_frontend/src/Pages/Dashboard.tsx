@@ -197,13 +197,13 @@ export default function AllTasks() {
       <Table.Body>
         {newsTasks.length > 0 ? (
           newsTasks.map((task) => (
-                <NewsTaskCard
-                  key={task.id}
-                  newsTask={task}
-                  onDelete={handleDeleteNewsTask}
-                  onEdit={handleEditNewsTask}
-                  listView={true}
-                />
+            <NewsTaskCard
+              key={task.id}
+              newsTask={task}
+              onDelete={handleDeleteNewsTask}
+              onEdit={handleEditNewsTask}
+              listView={true}
+            />
           ))
         ) : (
           <Table.Row>

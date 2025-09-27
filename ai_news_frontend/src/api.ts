@@ -1,11 +1,12 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event } from './interface';
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample } from './interface';
 
 
-// const API_BASE_URL = '/api';
-const API_BASE_URL = 'http://localhost:8030/api';
+const API_BASE_URL = '/api';
+// For local development, uncomment the following line and comment the above line
+// const API_BASE_URL = 'http://localhost:8030/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -368,3 +369,28 @@ export class CrudApi<T, TCreate = Partial<T>, TUpdate = Partial<T>> {
 }
 
 export const eventsAPI = new CrudApi<Event>('events');
+
+class promptAPI extends CrudApi<Prompt> {
+  constructor() {
+    super('prompt');
+  }
+
+  async addExample(example: PromptExample): Promise<Prompt | null> {
+    return this.customCall<Prompt>('POST', 'examples', example);
+  }
+
+  async deleteExample(example: PromptExample): Promise<Prompt | null> {
+    return this.customCall<Prompt>('POST', 'examples/delete', example);
+  }
+
+  async getPrompt(): Promise<Prompt | null> {
+    return await this.customCall<Prompt>('GET', '');
+  }
+
+  async update(id: number | string, data: Partial<Prompt>): Promise<Prompt | null> {
+    return this.customCall<Prompt>('PUT', '', data);
+  }
+};
+
+export const promptApi = new promptAPI();
+

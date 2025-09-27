@@ -6,7 +6,7 @@ import httpx
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai_news_bot.ai.prompts import Prompts
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.dependencies import get_standalone_session
@@ -135,7 +135,11 @@ async def check_crypto_events_with_ai(
         api_key=settings.deepseek,
         base_url="https://api.deepseek.com",
     ) as client:
-        role = Prompts.ROLE_CRYPTO
+        async with get_standalone_session() as session:
+            prompt = await crud_prompt.get_or_create(
+                session=session
+            )
+        role = prompt.crypto_role
         crypto_prices = "\n".join(
             f"{slug.capitalize()}: ${price:.4f} at "
             f"{timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
