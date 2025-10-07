@@ -80,9 +80,15 @@ in `ai_news_bot.settings.Settings.Config`.
 
 An example of .env file:
 ```bash
-AI_NEWS_BOT_RELOAD="True"
-AI_NEWS_BOT_PORT="8000"
-AI_NEWS_BOT_ENVIRONMENT="dev"
+AI_NEWS_BOT_TG_BOT_TOKEN=
+AI_NEWS_BOT_RELOAD=True
+AI_NEWS_BOT_USERS_SECRET=
+AI_NEWS_BOT_DEEPSEEK=
+AI_NEWS_BOT_CORS_ORIGINS=["http://localhost:3000"]
+AI_NEWS_BOT_DB_FILE=./fastapi.db
+AI_NEWS_BOT_ADMIN_EMAIL=admin@example.com
+AI_NEWS_BOT_ADMIN_PASSWORD=adminadmin
+AI_NEWS_BOT_DEEPL=
 ```
 
 You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/

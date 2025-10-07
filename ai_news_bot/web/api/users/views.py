@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from ai_news_bot.db.models.users import (
-    UserCreate,  # type: ignore
+    # UserCreate,  # type: ignore
     UserRead,  # type: ignore
     UserUpdate,  # type: ignore
     api_users,  # type: ignore
@@ -10,11 +10,14 @@ from ai_news_bot.db.models.users import (
 
 router = APIRouter()
 
-router.include_router(
-    api_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
+# Register route turned off.
+# User is created on start up. 
+# There's only one user.
+# router.include_router(
+#     api_users.get_register_router(UserRead, UserCreate),
+#     prefix="/auth",
+#     tags=["auth"],
+# )
 
 router.include_router(
     api_users.get_reset_password_router(),

@@ -1,6 +1,6 @@
 # type: ignore
 import uuid
-from typing import TYPE_CHECKING
+import contextlib
 
 from fastapi import Depends
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
@@ -9,26 +9,25 @@ from fastapi_users.authentication import (
     BearerTransport,
     JWTStrategy,
 )
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from fastapi_users.db import (
+    SQLAlchemyBaseUserTableUUID,
+    SQLAlchemyUserDatabase
+)
+from fastapi_users.exceptions import UserAlreadyExists
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, relationship
 
 from ai_news_bot.db.base import Base
-from ai_news_bot.db.dependencies import get_db_session
+from ai_news_bot.db.dependencies import get_db_session, get_standalone_session
 from ai_news_bot.db.models.news_task import NewsTask
 from ai_news_bot.settings import settings
-
-if TYPE_CHECKING:
-    from ai_news_bot.db.models.crypto_task import CryptoTask
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     """Represents a user entity."""
 
     tasks: Mapped[list[NewsTask]] = relationship(back_populates="user")
-    crypto_tasks: Mapped[list["CryptoTask"]] = relationship(
-        back_populates="user",
-    )
 
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
@@ -97,3 +96,21 @@ backends = [
 api_users = FastAPIUsers[User, uuid.UUID](get_user_manager, backends)
 
 current_active_user = api_users.current_user(active=True)
+
+
+async def create_user(email: str, password: str, is_superuser: bool = False):
+    """ Create a user if it does not exist. """
+    try:
+        async with get_standalone_session() as session:
+            user_db = SQLAlchemyUserDatabase(session, User)
+            user_manager = UserManager(user_db)
+            user = await user_manager.create(
+                UserCreate(
+                    email=email,
+                    password=password,
+                    is_superuser=is_superuser
+                )
+            )
+            print(f"User created {user}")
+    except UserAlreadyExists:
+        print(f"User {email} already exists")

@@ -6,11 +6,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from ai_news_bot.ai.crypto_analyzer import crypto_hourly_job
 from ai_news_bot.ai.news_analyzer import news_analyzer
 from ai_news_bot.services.redis.lifespan import init_redis, shutdown_redis
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import setup_bot, shutdown_bot
+from ai_news_bot.db.models.users import create_user
+from ai_news_bot.ai.utils import check_balance
 
 
 async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
@@ -50,15 +51,20 @@ async def lifespan_setup(
     await _setup_db(app)
     init_redis(app)
     await setup_bot()
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(
-        crypto_hourly_job,
-        "cron",
-        minute="0,30",
-        id="crypto_hourly_job",
+    await create_user(
+        email=settings.admin_email,
+        password=settings.admin_password,
+        is_superuser=True,
     )
+    scheduler = AsyncIOScheduler()
     scheduler.start()
     app.state.scheduler = scheduler
+    scheduler.add_job(
+        check_balance,
+        "interval",
+        minutes=60,
+        next_run_time=None,
+    )
     news_analyzer_task = asyncio.create_task(news_analyzer(app))
     app.state.news_analyzer_task = news_analyzer_task
 

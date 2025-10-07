@@ -170,11 +170,6 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
                 {...register("end_date", { required: true })}
                 mt={2}
               />
-              <Input
-                placeholder="Enter task link"
-                {...register("link")}
-                mt={2}
-              />
               </>
             )}
           </Box>

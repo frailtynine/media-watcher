@@ -1,9 +1,7 @@
 from fastapi.routing import APIRouter
 
 from ai_news_bot.web.api import (
-    crypto_task,
     echo,
-    events,
     monitoring,
     news_task,
     prompt,
@@ -21,11 +19,5 @@ api_router.include_router(
     prefix="/news_task",
     tags=["news_task"],
 )
-api_router.include_router(
-    crypto_task.router,
-    prefix="/crypto_task",
-    tags=["crypto_task"],
-)
-api_router.include_router(events.router, prefix="/events", tags=["events"])
 api_router.include_router(prompt.router, prefix="/prompt", tags=["prompt"])
 # Note: The order of inclusion matters for path matching.

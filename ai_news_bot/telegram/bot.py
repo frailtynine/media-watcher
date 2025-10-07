@@ -3,15 +3,19 @@ import logging
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application, CallbackQueryHandler, CommandHandler, ContextTypes
+)
+from langdetect import detect
 
-from ai_news_bot.db.crud.events import crud_event
 from ai_news_bot.db.crud.telegram import telegram_user_crud
+from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
-from ai_news_bot.ai.utils import compose_post
+from ai_news_bot.ai.utils import get_full_text, translate_article
+from ai_news_bot.telegram.utils import chunk_message
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +34,12 @@ async def start_command(
         tg_chat_id=update.message.chat.id,
     )
     async with get_standalone_session() as session:
-        await telegram_user_crud.create(session=session, obj_in=tg_user)
+        user = await telegram_user_crud.create(session=session, obj_in=tg_user)
+        logger.info(f"User subscribed: {user.tg_id} {user.tg_chat_id}")
         await update.message.reply_text(
             text=(
-                "Hello! I'm your AI News Bot. You are subscribed to news updates."
+                "Привет! Я мониторю новости и отправляю их в этот чат. \n\n"
+                "Вы теперь на меня подписаны."
             ),
         )
 
@@ -51,9 +57,9 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(
             (
-                "You have been unsubscribed from news notifications."
+                "Вы от меня отписались."
                 if is_deleted
-                else "Failed to unsubscribe. You may not be subscribed."
+                else "Не удалось отписаться. Возможно, вы не подписаны."
             ),
         )
 
@@ -67,42 +73,44 @@ async def handle_callback_query(
     callback_data = query.data
     await query.answer()
     logger.info(f"Received callback data: {callback_data}")
-    logger.info(f"news: {callback_data.get('news')}")
     async with get_standalone_session() as session:
-        if callback_data["action"] == "stop":
-            await crud_event.stop_task(
+        if callback_data["action"] == "irr":
+            await news_task_crud.add_false_positive(
+                news=callback_data["news"],
                 news_task_id=callback_data["task_id"],
                 session=session,
             )
-        elif callback_data["action"] == "irr":
-            await crud_event.add_false_positive(
-                news=callback_data["news"],
-                event_id=callback_data["task_id"],
-                session=session,
-            )
-        elif callback_data["action"] == "post":
-            news = callback_data.get("news")
-            event = await crud_event.get_object_by_id(
-                obj_id=callback_data["task_id"],
-                session=session,
-            )
-            if news:
-                post = await compose_post(
-                    news=news,
-                    event=event
-                )
-                if post:
-                    await send_message(
-                        chat_id=query.message.chat.id,
-                        text=post,
-                    )
+        elif callback_data["action"] == "translate":
+            if "news" in callback_data:
+                article = get_full_text(callback_data["news"].link)
+                if article:
+                    translated_text = translate_article(article)
+                    if len(translated_text) > 4000:
+                        chunks = chunk_message(translated_text)
+                        for chunk in chunks:
+                            await send_message(
+                                chat_id=query.message.chat.id,
+                                text=chunk,
+                            )
+                    else:
+                        await send_message(
+                            chat_id=query.message.chat.id,
+                            text=translated_text,
+                        )
                 else:
+                    logger.error((
+                        f"Failed to fetch article from "
+                        f"{callback_data['news'].link}"
+                    ))
                     await send_message(
                         chat_id=query.message.chat.id,
-                        text="Failed to generate post.",
+                        text="Не удалось получить полный текст статьи.",
                     )
             else:
-                logger.warning("No news data found in callback.")
+                await send_message(
+                    chat_id=query.message.chat.id,
+                    text="Что-то пошло не так.",
+                )
         else:
             logger.warning(f"Invalid callback data format: {callback_data}")
 
@@ -210,7 +218,7 @@ async def send_task_message(
     news: RSSItemSchema,
 ) -> int:
     """
-    Send a message with "stop" and "irrelevant" buttons.
+    Send a message with  buttons.
 
     Args:
         chat_id: Telegram chat ID
@@ -223,36 +231,32 @@ async def send_task_message(
     global bot_app
     if bot_app is None:
         raise RuntimeError("Bot not initialized")
-    stop_callback = {
-        "action": "stop",
-        "task_id": task_id,
-    }
     irr_callback = {
         "action": "irr",
         "task_id": task_id,
         "news": news,
     }
-    post_callback = {
-        "action": "post",
+    translate_callback = {
+        "action": "translate",
         "task_id": task_id,
         "news": news,
     }
-
+    post_language = detect(news.title)
     keyboard = [
         [
-            InlineKeyboardButton("Stop", callback_data=stop_callback),
             InlineKeyboardButton(
-                "Irrelevant",
+                "❌",
                 callback_data=irr_callback,
             ),
         ],
-        [
-            InlineKeyboardButton(
-                "Compose Post",
-                callback_data=post_callback
-            )
-        ]
     ]
+    if post_language == "en":
+        keyboard[0].append(
+            InlineKeyboardButton(
+                "🇬🇧 -> 🇷🇺",
+                callback_data=translate_callback
+            )
+        )
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await asyncio.wait_for(
@@ -262,6 +266,7 @@ async def send_task_message(
             reply_markup=reply_markup,
             disable_web_page_preview=True,
             parse_mode="Markdown",
+            disable_notification=True,
         ),
         timeout=5.00,
     )
