@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: ai_news_bot:${AI_NEWS_BOT_VERSION:-latest}
+    image: media-watcher-backend:${AI_NEWS_BOT_VERSION:-latest}
     restart: always
     env_file:
       - .env
@@ -13,28 +13,28 @@ services:
       migrator:
         condition: service_completed_successfully
     environment:
-      AI_NEWS_BOT_HOST: 0.0.0.0
-      AI_NEWS_BOT_DB_URL: /app/data/fastapi.db
-      AI_NEWS_BOT_REDIS_HOST: ai_news_bot-redis
+      MEDIA_WATCHER_HOST: 0.0.0.0
+      MEDIA_WATCHER_DB_URL: /app/data/media_watcher_verstka.db
+      MEDIA_WATCHER_REDIS_HOST: media-watcher-redis
     volumes:
-      - ai_news_bot-db-data:/app/data/
+      - db-watcher:/app/data/
 
   frontend:
     build:
       context: ./ai_news_frontend
       dockerfile: Dockerfile
-    image: ai_news_bot_frontend:${AI_NEWS_BOT_VERSION:-latest}
+    image: media-watcher-frontend:${AI_NEWS_BOT_VERSION:-latest}
     restart: always
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://localhost:8030
+      - REACT_APP_API_URL=http://localhost:8050
 
   nginx:
     image: nginx:alpine
     restart: always
     ports:
-      - "8030:80"
-      - "8443:443"
+      - "8050:80"
+      - "8444:443"
     depends_on:
       - api
       - frontend
@@ -47,17 +47,19 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    image: ai_news_bot:${AI_NEWS_BOT_VERSION:-latest}
+    env_file:
+      - .env
+    image: media-watcher-migrate:${AI_NEWS_BOT_VERSION:-latest}
     restart: "no"
     command: alembic upgrade head
     environment:
-      AI_NEWS_BOT_DB_URL: /app/data/fastapi.db
+      MEDIA_WATCHER_DB_URL: /app/data/media_watcher_verstka.db
     volumes:
-      - ai_news_bot-db-data:/app/data/
+      - db-watcher:/app/data/
 
   redis:
     image: redis:6.2-alpine
-    hostname: "ai_news_bot-redis"
+    hostname: "media-watcher-redis"
     restart: always
     command: redis-server --appendonly yes
     healthcheck:
@@ -69,5 +71,5 @@ services:
 
 
 volumes:
-  ai_news_bot-db-data:
-    name: ai_news_bot-db-data
+  db-watcher:
+    name: db-watcher

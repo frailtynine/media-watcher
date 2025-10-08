@@ -1,5 +1,5 @@
 import { Box, Heading, Button, Flex, Table, } from "@chakra-ui/react";
-import { newsTaskApi, cryptoTaskApi, eventsAPI} from "../api";
+import { newsTaskApi } from "../api";
 import NewsTaskCard from "../Items/NewsTaskCard";
 import { useState, useEffect } from "react";
 import type { NewsTask, NewsTaskCreate, } from "../interface";

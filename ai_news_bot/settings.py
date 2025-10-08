@@ -128,10 +128,10 @@ class Settings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
     users_secret: str = os.getenv("USERS_SECRET", "")
     # Variables for the database
-    db_file: Path = Path("/app/data/fastapi.db")
+    db_file: Path = Path("/app/data/media_watcher_verstka.db")
     db_echo: bool = False
     # Variables for Redis
-    redis_host: str = "ai_news_bot-redis"
+    redis_host: str = "media-watcher-redis"
     redis_port: int = 6379
     redis_user: Optional[str] = None
     redis_pass: Optional[str] = None
@@ -175,7 +175,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_prefix="AI_NEWS_BOT_",
+        env_prefix="MEDIA_WATCHER_",
         env_file_encoding="utf-8",
     )
 
