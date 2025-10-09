@@ -6,6 +6,7 @@ from typing import Optional
 import logging
 import logging.config
 
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from yarl import URL
 

@@ -28,8 +28,7 @@ RSS_URLS = [
     "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
     "https://feeds.feedburner.com/variety/headlines",
     "https://www.kommersant.ru/rss/corp.xml",
-    "https://www.dazeddigital.com/rss",
-    "https://nemoskva.net/feed/"
+    "https://nemoskva.net/feed/",
 ]
 
 
@@ -42,12 +41,16 @@ def get_news(
 
     :return: List of news items.
     """
-    rss_feeds = [
-        RSSParser.parse(response.text)
-        for response in responses
-        if response.status_code
-        and response.status_code == 200
-    ]
+    rss_feeds = []
+    for response in responses:
+        if response.status_code == 200:
+            try:
+                feed = RSSParser.parse(response.text)
+                rss_feeds.append(feed)
+            except Exception as e:
+                logger.warning(f"Failed to parse RSS feed: {e}")
+        else:
+            logger.warning(f"Bad response status: {response.status_code}")
     rss_lists = []
     for feed in rss_feeds:
         rss_list = [
@@ -206,15 +209,15 @@ async def news_analyzer(app: FastAPI) -> None:
                         f"Processed news: {news.title}, "
                         f"relevant to task '{task.title}': {is_relevant}",
                     )
-                    if not is_relevant:
-                        # try:
-                        #     await news_task_crud.add_positive(
-                        #         news=news,
-                        #         news_task_id=task.id,
-                        #         session=session,
-                        #     )
-                        # except Exception as e:
-                        #     logger.error(f"Error adding positive news: {e}")
+                    if is_relevant:
+                        try:
+                            await news_task_crud.add_positive(
+                                news=news,
+                                news_task_id=task.id,
+                                session=session,
+                            )
+                        except Exception as e:
+                            logger.error(f"Error adding positive news: {e}")
                         description_text = (
                             f"{news.description}\n\n"
                             if news.description else ""
