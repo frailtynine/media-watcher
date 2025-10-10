@@ -14,7 +14,7 @@ services:
         condition: service_completed_successfully
     environment:
       MEDIA_WATCHER_HOST: 0.0.0.0
-      MEDIA_WATCHER_DB_URL: /app/data/media_watcher_verstka.db
+      MEDIA_WATCHER_DB_FILE: /app/data/media_watcher_verstka.db
       MEDIA_WATCHER_REDIS_HOST: media-watcher-redis
     volumes:
       - db-watcher:/app/data/
@@ -53,7 +53,7 @@ services:
     restart: "no"
     command: alembic upgrade head
     environment:
-      MEDIA_WATCHER_DB_URL: /app/data/media_watcher_verstka.db
+      MEDIA_WATCHER_DB_FILE: /app/data/media_watcher_verstka.db
     volumes:
       - db-watcher:/app/data/
 

@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 RSS_URLS = [
     "https://tass.ru/rss/v2.xml",
-    "https://semnasem.org/rss/default.xml",
     "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
     "https://feeds.feedburner.com/variety/headlines",
     "https://www.kommersant.ru/rss/corp.xml",
@@ -50,7 +49,9 @@ def get_news(
             except Exception as e:
                 logger.warning(f"Failed to parse RSS feed: {e}")
         else:
-            logger.warning(f"Bad response status: {response.status_code}")
+            logger.warning(
+                f"Bad response status: {response.status_code}"
+            )
     rss_lists = []
     for feed in rss_feeds:
         rss_list = [
@@ -151,7 +152,16 @@ async def news_analyzer(app: FastAPI) -> None:
     logger.info("Starting news analyzer...")
     processed_news_links: set[str] = set()
     while True:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Accept": "application/rss+xml, application/xml, text/xml, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        }
+        async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
             logger.info("Fetching RSS feed...")
             responses = await asyncio.gather(
                 *[client.get(url) for url in RSS_URLS],
