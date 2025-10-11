@@ -15,7 +15,7 @@ from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.ai.utils import get_full_text, translate_article
-from ai_news_bot.telegram.utils import chunk_message
+from ai_news_bot.telegram.utils import chunk_message, clear_html_tags
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +262,7 @@ async def send_task_message(
     await asyncio.wait_for(
         bot_app.bot.send_message(
             chat_id=chat_id,
-            text=text,
+            text=clear_html_tags(text),
             reply_markup=reply_markup,
             disable_web_page_preview=True,
             parse_mode="Markdown",
@@ -290,7 +290,7 @@ async def send_message(chat_id: int, text: str):
     await asyncio.wait_for(
         bot_app.bot.send_message(
             chat_id=chat_id,
-            text=text,
+            text=clear_html_tags(text),
             parse_mode="Markdown",
         ),
         timeout=5.00,

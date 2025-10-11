@@ -21,6 +21,7 @@ async def test_news_task_endpoints(
 ) -> None:
     """Tests news task creation."""
     url = fastapi_app.url_path_for("create_news_task")
+    print(auth_headers)
     payload = NewsTaskCreateSchema(
         title="Test Task",
         description="This is a test task",

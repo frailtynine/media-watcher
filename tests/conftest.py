@@ -18,6 +18,8 @@ from ai_news_bot.db.utils import create_database, drop_database
 from ai_news_bot.services.redis.dependency import get_redis_pool
 from ai_news_bot.settings import settings
 from ai_news_bot.web.application import get_app
+from ai_news_bot.db.models.users import create_user
+
 
 
 @pytest.fixture(scope="session")
@@ -133,32 +135,29 @@ async def client(
 
 
 @pytest.fixture
-async def test_user(dbsession: AsyncSession, client: AsyncClient) -> str:
-    """Create test user and return it."""
-    user_data = {
-        "email": " default_user@example.com",
-        "password": "string",
-        "is_active": True,
-        "is_superuser": False,
-        "is_verified": True,
-    }
-    response = await client.post("/api/auth/register", json=user_data)
-    user = response.json()
-    return user.get("id")
-
-
-@pytest.fixture
 async def auth_headers(dbsession: AsyncSession, client: AsyncClient) -> dict:
     """Get authentication headers by actually logging in through the API."""
-    user_data = {
-        "email": " test_user@example.com",
-        "password": "string",
-        "is_active": True,
-        "is_superuser": False,
-        "is_verified": True,
+    await create_user(
+        settings.admin_email,
+        settings.admin_password,
+        True
+    )
+    login_data = {
+        "username": settings.admin_email,
+        "password": settings.admin_password,
     }
-    await client.post("/api/auth/register", json=user_data)
-    login_data = {"username": "test_user@example.com", "password": "string"}
     response = await client.post("/api/auth/jwt/login", data=login_data)
     token = response.json().get("access_token")
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+async def test_user(
+    dbsession: AsyncSession,
+    client: AsyncClient,
+    auth_headers: dict,
+) -> str:
+    """Create test user and return it."""
+    response = await client.get("/api/users/me", headers=auth_headers)
+    user = response.json()
+    return user.get("id")
