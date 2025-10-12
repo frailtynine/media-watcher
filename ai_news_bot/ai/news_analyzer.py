@@ -165,7 +165,7 @@ async def news_analyzer(app: FastAPI) -> None:
             logger.info("Fetching RSS feed...")
             responses = await asyncio.gather(
                 *[client.get(url) for url in RSS_URLS],
-                return_exceptions=False,
+                return_exceptions=True,
             )
             logger.info(f"Fetched RSS feed with {len(responses)} responses")
         processed_news_links, news_to_process = get_news(
