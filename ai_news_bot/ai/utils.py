@@ -3,6 +3,7 @@ import logging
 
 from newspaper import Article
 import deepl
+from openai import AsyncOpenAI
 
 from ai_news_bot.settings import settings
 from ai_news_bot.db.dependencies import get_standalone_session
@@ -72,8 +73,52 @@ def get_full_text(url: str) -> Article | None:
 def translate_article(
     article: Article
 ) -> str | None:
-    """Translate article text to English using DeepSeek API."""
+    """
+    Translate article text to English using Deepl API.
+    Use for long articles. For short texts use translate_with_deepseek.
+
+    Args:
+        article: Newspaper3k Article object with title and text.
+    """
     deepl_client = deepl.DeepLClient(settings.deepl)
     full_text = f"{article.title}\n\n{article.text}"
     response = deepl_client.translate_text(full_text, target_lang="RU")
     return response.text if response else None
+
+
+async def translate_with_deepseek(text: str) -> str:
+    """Translate text to Russian using DeepSeek API."""
+    try:
+        async with AsyncOpenAI(
+            api_key=settings.deepseek,
+            base_url="https://api.deepseek.com",
+            timeout=5.0,
+        ) as client:
+            response = await client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a helpful assistant that translates"
+                            "text to Russian.Return only the translated text."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Translate the following text to Russian: {text}"
+                        ),
+                    },
+                ],
+            )
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
+            else:
+                logger.error(
+                    "DeepSeek translation failed or returned empty content."
+                )
+                return text
+    except Exception as e:
+        logger.error(f"DeepSeek translation error: {e}")
+        return text

@@ -18,7 +18,9 @@ async def test_telegram_user_crud(
         tg_id=123456789,
         tg_chat_id=987654321,
     )
-    created_user = await telegram_user_crud.create(session=dbsession, obj_in=new_user)
+    created_user = await telegram_user_crud.create(
+        session=dbsession, obj_in=new_user
+    )
     assert created_user.tg_id == new_user.tg_id
 
     # Test retrieving all chat IDs
@@ -32,4 +34,3 @@ def test_clear_html_tags() -> None:
     html_text = "<p>This is a <b>bold</b> move.</p>"
     expected_text = "This is a bold move."
     assert clear_html_tags(html_text) == expected_text
-

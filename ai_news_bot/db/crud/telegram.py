@@ -52,5 +52,25 @@ class TelegramUserCRUD(BaseCRUD):
             return True
         return False
 
+    async def delete_session(self, session: AsyncSession, tg_id: int, tg_chat_id: int) -> bool:
+        """
+        Delete a Telegram user session by their ID.
+
+        :param session: SQLAlchemy async session.
+        :param tg_id: Telegram user ID.
+        """
+        stmt = select(self.model).where(
+            self.model.tg_id == tg_id
+        ).where(
+            self.model.tg_chat_id == tg_chat_id
+        )
+        user = await session.execute(stmt)
+        user = user.scalar_one_or_none()
+        if user:
+            await session.delete(user)
+            await session.commit()
+            return True
+        return False
+
 
 telegram_user_crud = TelegramUserCRUD(TelegramUser)

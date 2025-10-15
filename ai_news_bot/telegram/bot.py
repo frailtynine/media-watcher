@@ -14,7 +14,11 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
-from ai_news_bot.ai.utils import get_full_text, translate_article
+from ai_news_bot.ai.utils import (
+    get_full_text,
+    translate_article,
+    translate_with_deepseek
+)
 from ai_news_bot.telegram.utils import chunk_message, clear_html_tags
 
 logger = logging.getLogger(__name__)
@@ -51,9 +55,10 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tg_chat_id=update.message.chat.id,
     )
     async with get_standalone_session() as session:
-        is_deleted = await telegram_user_crud.delete_user(
+        is_deleted = await telegram_user_crud.delete_session(
             session=session,
             tg_id=tg_user.tg_id,
+            tg_chat_id=tg_user.tg_chat_id,
         )
         await update.message.reply_text(
             (
@@ -231,6 +236,7 @@ async def send_task_message(
     global bot_app
     if bot_app is None:
         raise RuntimeError("Bot not initialized")
+    cleared_text = clear_html_tags(text)
     irr_callback = {
         "action": "irr",
         "task_id": task_id,
@@ -257,12 +263,13 @@ async def send_task_message(
                 callback_data=translate_callback
             )
         )
+        cleared_text = await translate_with_deepseek(cleared_text)
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await asyncio.wait_for(
         bot_app.bot.send_message(
             chat_id=chat_id,
-            text=clear_html_tags(text),
+            text=cleared_text,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
             parse_mode="Markdown",
