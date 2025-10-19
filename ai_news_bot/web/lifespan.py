@@ -12,6 +12,12 @@ from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import setup_bot, shutdown_bot
 from ai_news_bot.db.models.users import create_user
 from ai_news_bot.ai.utils import check_balance
+from ai_news_bot.ai.telegram_producer import telegram_producer
+
+TG_CHANNELS = [
+    "astrapress",
+    "ostorozhno_novosti"
+]
 
 
 async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
@@ -63,7 +69,12 @@ async def lifespan_setup(
         check_balance,
         "interval",
         minutes=60,
-        next_run_time=None,
+    )
+    scheduler.add_job(
+        telegram_producer,
+        "interval",
+        minutes=1,
+        args=[TG_CHANNELS],
     )
     news_analyzer_task = asyncio.create_task(news_analyzer(app))
     app.state.news_analyzer_task = news_analyzer_task
