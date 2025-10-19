@@ -1,13 +1,17 @@
 import httpx
 import logging
+from datetime import datetime, timezone, timedelta
+from dateutil.parser import parse as parse_date
 
 from newspaper import Article
 import deepl
 from openai import AsyncOpenAI
+from rss_parser import RSSParser
 
 from ai_news_bot.settings import settings
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.telegram import telegram_user_crud
+from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 
 
 logger = logging.getLogger(__name__)
@@ -122,3 +126,38 @@ async def translate_with_deepseek(text: str) -> str:
     except Exception as e:
         logger.error(f"DeepSeek translation error: {e}")
         return text
+
+
+def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:
+    """
+    Parse RSS feed response and return list of RSSItemSchema.
+
+    Args:
+        response: httpx.Response object containing RSS feed XML.
+    """
+    if response.status_code == 200:
+        try:
+            feed = RSSParser.parse(response.text)
+        except Exception as e:
+            logger.warning(f"Failed to parse RSS feed: {e}")
+    else:
+        logger.warning(
+            f"Bad response status: {response.status_code}"
+        )
+    messages = [
+        RSSItemSchema(
+            title=item.title.content,
+            link=item.links[0].content,
+            description=(
+                item.description.content if item.description else ""
+            ),
+            pub_date=parse_date(item.pub_date.content),
+        )
+        for item in feed.channel.items
+    ]
+    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    messages = [
+        item for item in messages
+        if item.pub_date > one_hour_ago
+    ]
+    return messages
