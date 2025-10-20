@@ -1,11 +1,6 @@
 import asyncio
 import httpx
 import logging
-from datetime import datetime, timedelta, timezone
-from dateutil.parser import parse as parse_date
-
-from bs4 import BeautifulSoup
-from rss_parser import RSSParser
 
 from ai_news_bot.db.crud.news import crud_news
 from ai_news_bot.db.dependencies import get_standalone_session

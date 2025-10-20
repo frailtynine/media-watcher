@@ -1,6 +1,5 @@
 import httpx
 import logging
-from datetime import datetime, timezone, timedelta
 from dateutil.parser import parse as parse_date
 
 from newspaper import Article
@@ -12,6 +11,7 @@ from ai_news_bot.settings import settings
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
+from ai_news_bot.db.crud.news import crud_news
 
 
 logger = logging.getLogger(__name__)
@@ -155,9 +155,28 @@ def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:
         )
         for item in feed.channel.items
     ]
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-    messages = [
-        item for item in messages
-        if item.pub_date > one_hour_ago
-    ]
     return messages
+
+
+async def get_rss_feed(url: str) -> httpx.Response:
+    """Fetch RSS feed from a URL."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        response.raise_for_status()
+        return response
+
+
+async def add_news_to_db(
+    news_items: list[RSSItemSchema],
+) -> None:
+    """
+    Add news items to the database if they don't already exist.
+    """
+    async with get_standalone_session() as session:
+        for item in news_items:
+            existing_news = await crud_news.get_object_by_field(
+                session=session, field_name="link", field_value=item.link
+            )
+            if not existing_news:
+                await crud_news.create(session=session, obj_in=item)
+                logger.info(f"Added news: {item.title}")
