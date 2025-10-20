@@ -65,21 +65,20 @@ async def test_fetch_and_parse_telegram_channels_success():
             pub_date=datetime.now(timezone.utc)
         )
     ]
-    
+
     with patch(
         "ai_news_bot.ai.telegram_producer.fetch_rss_feed"
     ) as mock_fetch:
         mock_fetch.return_value = MagicMock()
-        
         with patch(
             "ai_news_bot.ai.telegram_producer.parse_rss_feed"
         ) as mock_parse:
             mock_parse.return_value = mock_rss_items
-            
+
             result = await fetch_and_parse_telegram_channels(
                 channel_names=["channel1", "channel2"]
             )
-            
+
             assert len(result) == 2  # Two channels, one message each
             assert all(isinstance(item, RSSItemSchema) for item in result)
             assert mock_fetch.call_count == 2
@@ -95,16 +94,16 @@ async def test_fetch_and_parse_telegram_channels_with_exception():
             MagicMock(),  # First channel succeeds
             httpx.HTTPError("Network error")  # Second channel fails
         ]
-        
+
         with patch(
             "ai_news_bot.ai.telegram_producer.parse_rss_feed"
         ) as mock_parse:
             mock_parse.return_value = []
-            
+
             result = await fetch_and_parse_telegram_channels(
                 channel_names=["channel1", "channel2"]
             )
-            
+
             # Should return empty list due to exception handling
             assert isinstance(result, list)
 
@@ -126,19 +125,19 @@ async def test_add_news_to_db(dbsession: AsyncSession):
             pub_date=datetime.now()
         )
     ]
-    
+
     with patch(
         "ai_news_bot.ai.telegram_producer.get_standalone_session"
     ) as mock_session:
         mock_session.return_value.__aenter__.return_value = dbsession
-        
+
         # Mock the crud operations
         with patch("ai_news_bot.ai.telegram_producer.crud_news") as mock_crud:
             mock_crud.get_object_by_field = AsyncMock(return_value=None)
             mock_crud.create = AsyncMock(return_value=MagicMock())
-            
+
             await add_news_to_db(news_items)
-            
+
             # Verify that crud operations were called
             assert mock_crud.get_object_by_field.call_count == 2
             assert mock_crud.create.call_count == 2

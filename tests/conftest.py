@@ -14,12 +14,10 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from ai_news_bot.db.dependencies import get_db_session
-from ai_news_bot.db.utils import create_database, drop_database
+from ai_news_bot.db.utils import create_database
 from ai_news_bot.services.redis.dependency import get_redis_pool
 from ai_news_bot.settings import settings
 from ai_news_bot.web.application import get_app
-from ai_news_bot.db.models.users import create_user
-
 
 
 @pytest.fixture(scope="session")
@@ -41,8 +39,22 @@ async def _engine() -> AsyncGenerator[AsyncEngine, None]:
     """
     from ai_news_bot.db.meta import meta
     from ai_news_bot.db.models import load_all_models
+    import tempfile
+    import os
+    from pathlib import Path
 
     load_all_models()
+
+    # Create a temporary database file for testing
+    test_db_fd, test_db_path = tempfile.mkstemp(suffix=".db")
+    os.close(test_db_fd)  # Close the file descriptor
+
+    # Set environment variable to override the database file for tests
+    os.environ["MEDIA_WATCHER_DB_FILE"] = test_db_path
+
+    # Reload settings to pick up the new database path
+    from ai_news_bot.settings import settings
+    settings.db_file = Path(test_db_path)
 
     await create_database()
 
@@ -54,7 +66,10 @@ async def _engine() -> AsyncGenerator[AsyncEngine, None]:
         yield engine
     finally:
         await engine.dispose()
-        await drop_database()
+        # Clean up the temporary test database file
+        import os
+        if os.path.exists(test_db_path):
+            os.unlink(test_db_path)
 
 
 @pytest.fixture
@@ -130,24 +145,52 @@ async def client(
     :param fastapi_app: the application.
     :yield: client for the app.
     """
-    async with AsyncClient(app=fastapi_app, base_url="http://test", timeout=2.0) as ac:
+    async with AsyncClient(
+        app=fastapi_app, base_url="http://test", timeout=2.0
+    ) as ac:
         yield ac
 
 
 @pytest.fixture
 async def auth_headers(dbsession: AsyncSession, client: AsyncClient) -> dict:
     """Get authentication headers by actually logging in through the API."""
-    await create_user(
-        settings.admin_email,
-        settings.admin_password,
-        True
-    )
+
+    # Create user with session commit
+    from ai_news_bot.db.models.users import UserCreate, User, UserManager
+    from fastapi_users.db import SQLAlchemyUserDatabase
+    from fastapi_users.exceptions import UserAlreadyExists
+
+    try:
+        user_db = SQLAlchemyUserDatabase(dbsession, User)
+        user_manager = UserManager(user_db)
+        await user_manager.create(
+            UserCreate(
+                email=settings.admin_email,
+                password=settings.admin_password,
+                is_superuser=True
+            )
+        )
+        await dbsession.commit()  # Ensure user is committed
+    except UserAlreadyExists:
+        pass  # User already exists, continue
+    except Exception as e:
+        raise Exception(f"Error creating user: {e}")
+
     login_data = {
         "username": settings.admin_email,
         "password": settings.admin_password,
     }
     response = await client.post("/api/auth/jwt/login", data=login_data)
+
+    if response.status_code != 200:
+        raise Exception(
+            f"Login failed with status {response.status_code}: {response.text}"
+        )
+
     token = response.json().get("access_token")
+    if not token:
+        raise Exception(f"No access token in response: {response.json()}")
+
     return {"Authorization": f"Bearer {token}"}
 
 
