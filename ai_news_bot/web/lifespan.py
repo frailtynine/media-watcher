@@ -83,7 +83,6 @@ async def lifespan_setup(
         telegram_producer,
         "interval",
         minutes=1,
-        args=[TG_CHANNELS],
     )
     scheduler.add_job(
         rss_producer,
@@ -96,7 +95,6 @@ async def lifespan_setup(
         "interval",
         minutes=1,
     )
-
     app.middleware_stack = app.build_middleware_stack()
 
     yield

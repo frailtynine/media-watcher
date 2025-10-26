@@ -12,6 +12,7 @@ from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.db.crud.news import crud_news
+from ai_news_bot.db.crud.settings import settings_crud
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ async def check_balance():
                 logger.warning("DeepSeek balance is zero.")
             else:
                 balance = response_json["balance_infos"][0]["total_balance"]
-                if balance < 1:
+                if float(balance) < 1:
                     await send_deepseek_balance_alert(balance=balance)
                     logger.warning(
                         f"DeepSeek balance is low: ${balance:.2f}"
@@ -75,7 +76,8 @@ def get_full_text(url: str) -> Article | None:
 
 
 def translate_article(
-    article: Article
+    article: Article,
+    deepl_api_key: str
 ) -> str | None:
     """
     Translate article text to English using Deepl API.
@@ -84,19 +86,28 @@ def translate_article(
     Args:
         article: Newspaper3k Article object with title and text.
     """
-    deepl_client = deepl.DeepLClient(settings.deepl)
+    deepl_client = deepl.DeepLClient(deepl_api_key)
     full_text = f"{article.title}\n\n{article.text}"
     response = deepl_client.translate_text(full_text, target_lang="RU")
     return response.text if response else None
 
 
-async def translate_with_deepseek(text: str) -> str:
+async def translate_with_deepseek(
+    text: str,
+) -> str:
     """Translate text to Russian using DeepSeek API."""
+    async with get_standalone_session() as session:
+        settings = await settings_crud.get_all_objects(session=session)
+        if settings:
+            deepseek_api_key = settings[0].deepseek
+        else:
+            logger.warning("DeepSeek API key not found in settings.")
+            return text
     try:
         async with AsyncOpenAI(
-            api_key=settings.deepseek,
+            api_key=deepseek_api_key,
             base_url="https://api.deepseek.com",
-            timeout=5.0,
+            timeout=30.0,
         ) as client:
             response = await client.chat.completions.create(
                 model="deepseek-chat",
@@ -180,3 +191,23 @@ async def add_news_to_db(
             if not existing_news:
                 await crud_news.create(session=session, obj_in=item)
                 logger.info(f"Added news: {item.title}")
+
+
+async def get_sources(
+    rss: bool = False,
+    telegram: bool = False
+) -> dict[str, str]:
+    """
+    Retrieve RSS or Telegram sources from settings.
+
+    Args:
+        rss: If True, retrieve RSS sources.
+        telegram: If True, retrieve Telegram sources.
+    """
+    async with get_standalone_session() as session:
+        settings = await settings_crud.get_all_objects(session=session)
+        if settings and telegram:
+            return settings[0].tg_urls
+        elif settings and rss:
+            return settings[0].rss_urls
+        return {}

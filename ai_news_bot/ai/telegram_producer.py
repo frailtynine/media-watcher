@@ -2,29 +2,44 @@ import asyncio
 import httpx
 import logging
 
-from ai_news_bot.db.crud.news import crud_news
-from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
-from ai_news_bot.ai.utils import parse_rss_feed
+from ai_news_bot.ai.utils import (
+    parse_rss_feed,
+    get_sources,
+    add_news_to_db
+)
 
 
 logger = logging.getLogger(__name__)
 
 
-async def fetch_rss_feed(channel_name: str) -> httpx.Response:
-    url = f"https://rss.owo.nz/telegram/channel/{channel_name}/showLinkPreview=0&showViaBot=0&showReplyTo=0&showFwdFrom=0&showFwdFromAuthor=0&showInlineButtons=0&showMediaTagInTitle=1&showMediaTagAsEmoji=1&includeFwd=0&includeReply=1&includeServiceMsg=0&includeUnsupportedMsg=0" # noqa
+RSS_HUB_HOSTS = [
+    "rsshub.umzzz.com",
+    "rss.owo.nz",
+    "rsshub.ktachibana.party",
+    "rsshub.isrss.com",
+    "rsshub.asailor.org"
+
+]
+
+
+async def fetch_rss_feed(channel_url: str) -> httpx.Response:
+    channel_name = channel_url.replace("https://t.me/", "").rstrip("/")
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        return response
+        for host in RSS_HUB_HOSTS:
+            url = f"https://{host}/telegram/channel/{channel_name}/showLinkPreview=0&showViaBot=0&showReplyTo=0&showFwdFrom=0&showFwdFromAuthor=0&showInlineButtons=0&showMediaTagInTitle=1&showMediaTagAsEmoji=1&includeFwd=0&includeReply=1&includeServiceMsg=0&includeUnsupportedMsg=0" # noqa
+            response = await client.get(url)
+            if response.status_code == 200:
+                return response
+        logger.error(f"All RSSHub hosts failed for channel: {channel_url}")
 
 
 async def fetch_and_parse_telegram_channels(
-    channel_names: list[str],
+    channel_urls: list[str],
 ) -> list[RSSItemSchema]:
     tasks = []
-    for channel_name in channel_names:
-        tasks.append(fetch_rss_feed(channel_name))
+    for channel_url in channel_urls:
+        tasks.append(fetch_rss_feed(channel_url))
     try:
         responses = await asyncio.gather(
             *tasks, return_exceptions=True
@@ -38,35 +53,21 @@ async def fetch_and_parse_telegram_channels(
                 messages.extend(parse_rss_feed(rss_response))
         return messages
     except httpx.HTTPError as e:
-        logger.error(f"HTTP error while fetching channel {channel_name}: {e}")
+        logger.error(f"HTTP error while fetching channel {channel_url}: {e}")
         return []
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return []
 
 
-async def add_news_to_db(
-    news_items: list[RSSItemSchema],
-) -> None:
-    """"
-    Add news items to the database if they don't already exist.
-    """
-    async with get_standalone_session() as session:
-        for item in news_items:
-            existing_news = await crud_news.get_object_by_field(
-                session=session, field_name="link", field_value=item.link
-            )
-            if not existing_news:
-                await crud_news.create(session=session, obj_in=item)
-                logger.info(f"Added news: {item.title}")
-
-
-async def telegram_producer(
-    channel_names: list[str],
-):
+async def telegram_producer() -> None:
     logger.info("Starting Telegram producer...")
+    channel_urls = await get_sources(telegram=True)
+    if not channel_urls:
+        logger.info("No Telegram channels configured.")
+        return
     news_items = await fetch_and_parse_telegram_channels(
-        channel_names=channel_names
+        channel_urls=list(channel_urls.values())
     )
     logger.info(f"Fetched {len(news_items)} news items from Telegram.")
     await add_news_to_db(news_items)

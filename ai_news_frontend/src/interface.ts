@@ -102,3 +102,10 @@ export interface Prompt {
   suggest_post: string;
   post_examples: string[];
 }
+
+export interface Settings {
+  deepseek: string | null;
+  deepl: string | null;
+  rss_urls: Record<string, string>;
+  tg_urls: Record<string, string>;
+}

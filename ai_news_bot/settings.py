@@ -139,8 +139,6 @@ class Settings(BaseSettings):
     redis_base: Optional[int] = None
     # For testing purposes.
     # TODO: in prod create a model for tokens
-    deepseek: Optional[str] = None
-    deepl: Optional[str] = None
     tg_bot_test_token: Optional[str] = None
     tg_bot_token: Optional[str] = None
     admin_email: Optional[str] = None

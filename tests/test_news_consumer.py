@@ -104,6 +104,7 @@ async def test_process_news_relevant(
             news=sample_news,
             news_task=sample_news_task,
             initial_prompt=sample_prompt.role,
+            deepseek_api_key="test-deepseek-key",
         )
 
         assert result is True
@@ -131,6 +132,7 @@ async def test_process_news_not_relevant(
             news=sample_news,
             news_task=sample_news_task,
             initial_prompt=sample_prompt.role,
+            deepseek_api_key="test-deepseek-key",
         )
 
         assert result is False

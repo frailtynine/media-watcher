@@ -7,6 +7,7 @@ from ai_news_bot.web.api import (
     prompt,
     redis,
     users,
+    settings
 )
 
 api_router = APIRouter()
@@ -20,4 +21,9 @@ api_router.include_router(
     tags=["news_task"],
 )
 api_router.include_router(prompt.router, prefix="/prompt", tags=["prompt"])
+api_router.include_router(
+    settings.router,
+    prefix="/settings",
+    tags=["settings"],
+)
 # Note: The order of inclusion matters for path matching.

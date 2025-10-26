@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from ai_news_bot.db.crud.base import BaseCRUD
 from ai_news_bot.db.models.news_task import NewsTask
@@ -29,7 +30,7 @@ class NewsTaskCRUD(BaseCRUD):
             *current_list,
             news.model_dump(mode="json"),
         ])
-
+        flag_modified(news_task, list_attribute)
         session.add(news_task)
         await session.commit()
         await session.refresh(news_task)
