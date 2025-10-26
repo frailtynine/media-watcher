@@ -1,12 +1,12 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample } from './interface';
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample, Settings } from './interface';
 
 
-const API_BASE_URL = '/api';
+// const API_BASE_URL = '/api';
 // For local development, uncomment the following line and comment the above line
-// const API_BASE_URL = 'http://localhost:8050/api';
+const API_BASE_URL = 'http://localhost:8050/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -387,10 +387,25 @@ class promptAPI extends CrudApi<Prompt> {
     return await this.customCall<Prompt>('GET', '');
   }
 
-  async update(_id: number | string, data: Partial<Prompt>): Promise<Prompt | null> {
+  async updatePrompt(data: Partial<Prompt>): Promise<Prompt | null> {
     return this.customCall<Prompt>('PUT', '', data);
   }
 };
 
 export const promptApi = new promptAPI();
 
+class settingsAPIClass extends CrudApi<Settings> {
+  constructor() {
+    super('settings');
+  }
+
+  async getSettings(): Promise<Settings | null> {
+    return this.customCall<Settings>('GET', '');
+  }
+
+  async updateSettings(data: Partial<Settings>): Promise<Settings | null> {
+    return this.customCall<Settings>('PUT', '', data);
+  }
+};
+
+export const settingsAPI = new settingsAPIClass();

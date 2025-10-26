@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 
-from ai_news_bot.settings import settings
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.news import crud_news
 from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.crud.telegram import telegram_user_crud
+from ai_news_bot.db.crud.settings import settings_crud
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.telegram.bot import queue_task_message
 
@@ -44,11 +44,12 @@ async def process_news(
     news: "News",
     news_task: "NewsTask",
     initial_prompt: str,
+    deepseek_api_key: str
 ) -> bool:
     async with AsyncOpenAI(
-        api_key=settings.deepseek,
+        api_key=deepseek_api_key,
         base_url="https://api.deepseek.com",
-        timeout=5.0,
+        timeout=15.0,
     ) as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description']}"
@@ -137,6 +138,9 @@ async def news_consumer() -> None:
         prompt = await crud_prompt.get_or_create(
             session=session,
         )
+        settings = await settings_crud.get_all_objects(session=session)
+        if settings:
+            deepseek_api_key = settings[0].deepseek
     if unprocessed_news:
         for news in unprocessed_news:
             try:
@@ -146,6 +150,7 @@ async def news_consumer() -> None:
                         news=news,
                         news_task=news_task,
                         initial_prompt=prompt.role,
+                        deepseek_api_key=deepseek_api_key,
                     )
                     if is_relevant:
                         logger.info(

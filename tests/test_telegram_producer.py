@@ -2,12 +2,10 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.ai.telegram_producer import (
     fetch_rss_feed,
     fetch_and_parse_telegram_channels,
-    add_news_to_db,
     telegram_producer,
 )
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
@@ -18,20 +16,19 @@ async def test_fetch_rss_feed_success():
     """Test successful RSS feed fetching from Telegram channel."""
     mock_response = MagicMock()
     mock_response.text = "<?xml version='1.0'?><rss>test content</rss>"
-    mock_response.raise_for_status = MagicMock()
+    mock_response.status_code = 200
 
     with patch("httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             return_value=mock_response
         )
-        result = await fetch_rss_feed("test_channel")
+        result = await fetch_rss_feed("https://t.me/test_channel")
 
         assert result == mock_response
         mock_get = mock_client.return_value.__aenter__.return_value.get
-        mock_get.assert_called_once()
-        # Verify the correct URL is constructed
+        # Should try the first host and succeed
         expected_url = (
-            "https://rss.owo.nz/telegram/channel/test_channel/"
+            "https://rsshub.umzzz.com/telegram/channel/test_channel/"
             "showLinkPreview=0&showViaBot=0&showReplyTo=0&showFwdFrom=0"
             "&showFwdFromAuthor=0&showInlineButtons=0&showMediaTagInTitle=1"
             "&showMediaTagAsEmoji=1&includeFwd=0&includeReply=1"
@@ -41,17 +38,23 @@ async def test_fetch_rss_feed_success():
 
 
 @pytest.mark.anyio
-async def test_fetch_rss_feed_http_error():
-    """Test HTTP error handling in RSS feed fetching."""
+async def test_fetch_rss_feed_all_hosts_fail():
+    """Test when all RSS hub hosts fail."""
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+
     with patch("httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-            side_effect=httpx.HTTPStatusError(
-                "404", request=None, response=None
-            )
+            return_value=mock_response
         )
 
-        with pytest.raises(httpx.HTTPStatusError):
-            await fetch_rss_feed("test_channel")
+        result = await fetch_rss_feed("https://t.me/test_channel")
+
+        # Should return None when all hosts fail
+        assert result is None
+        # Should try all 5 hosts
+        mock_get = mock_client.return_value.__aenter__.return_value.get
+        assert mock_get.call_count == 5
 
 
 @pytest.mark.anyio
@@ -76,7 +79,7 @@ async def test_fetch_and_parse_telegram_channels_success():
             mock_parse.return_value = mock_rss_items
 
             result = await fetch_and_parse_telegram_channels(
-                channel_names=["channel1", "channel2"]
+                channel_urls=["https://t.me/channel1", "https://t.me/channel2"]
             )
 
             assert len(result) == 2  # Two channels, one message each
@@ -87,6 +90,15 @@ async def test_fetch_and_parse_telegram_channels_success():
 @pytest.mark.anyio
 async def test_fetch_and_parse_telegram_channels_with_exception():
     """Test handling of exceptions during channel fetching."""
+    mock_rss_items = [
+        RSSItemSchema(
+            title="Test message",
+            description="Test description",
+            link="https://t.me/test/123",
+            pub_date=datetime.now(timezone.utc)
+        )
+    ]
+
     with patch(
         "ai_news_bot.ai.telegram_producer.fetch_rss_feed"
     ) as mock_fetch:
@@ -98,49 +110,43 @@ async def test_fetch_and_parse_telegram_channels_with_exception():
         with patch(
             "ai_news_bot.ai.telegram_producer.parse_rss_feed"
         ) as mock_parse:
-            mock_parse.return_value = []
+            mock_parse.return_value = mock_rss_items
 
             result = await fetch_and_parse_telegram_channels(
-                channel_names=["channel1", "channel2"]
+                channel_urls=["https://t.me/channel1", "https://t.me/channel2"]
             )
 
-            # Should return empty list due to exception handling
+            # Should return items from successful channel only
             assert isinstance(result, list)
+            assert len(result) == 1  # Only first channel succeeded
 
 
 @pytest.mark.anyio
-async def test_add_news_to_db(dbsession: AsyncSession):
-    """Test adding news items to database."""
-    news_items = [
-        RSSItemSchema(
-            title="Test News 1",
-            description="Test description 1",
-            link="https://example.com/1",
-            pub_date=datetime.now()
-        ),
-        RSSItemSchema(
-            title="Test News 2",
-            description="Test description 2",
-            link="https://example.com/2",
-            pub_date=datetime.now()
+async def test_fetch_rss_feed_channel_name_parsing():
+    """Test proper parsing of channel names from URLs."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+
+    with patch("httpx.AsyncClient") as mock_client:
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+            return_value=mock_response
         )
-    ]
 
-    with patch(
-        "ai_news_bot.ai.telegram_producer.get_standalone_session"
-    ) as mock_session:
-        mock_session.return_value.__aenter__.return_value = dbsession
+        # Test with trailing slash
+        await fetch_rss_feed("https://t.me/astrapress/")
 
-        # Mock the crud operations
-        with patch("ai_news_bot.ai.telegram_producer.crud_news") as mock_crud:
-            mock_crud.get_object_by_field = AsyncMock(return_value=None)
-            mock_crud.create = AsyncMock(return_value=MagicMock())
+        # Test without trailing slash
+        await fetch_rss_feed("https://t.me/astrapress")
 
-            await add_news_to_db(news_items)
+        mock_get = mock_client.return_value.__aenter__.return_value.get
 
-            # Verify that crud operations were called
-            assert mock_crud.get_object_by_field.call_count == 2
-            assert mock_crud.create.call_count == 2
+        # Both calls should use "astrapress" as channel name
+        call_args = [call[0][0] for call in mock_get.call_args_list]
+
+        # Check that both URLs contain the correct channel name
+        assert "/telegram/channel/astrapress/" in call_args[0]
+        assert "/telegram/channel/astrapress/" in call_args[1]
+        assert call_args[0] == call_args[1]  # Both should be identical
 
 
 @pytest.mark.anyio
@@ -155,21 +161,54 @@ async def test_telegram_producer_integration():
         )
     ]
 
+    mock_sources = {
+        "astrapress": "https://t.me/astrapress",
+        "test_channel": "https://t.me/test_channel"
+    }
+
     with patch(
-        "ai_news_bot.ai.telegram_producer.fetch_and_parse_telegram_channels"
-    ) as mock_fetch:
-        mock_fetch.return_value = mock_news_items
+        "ai_news_bot.ai.telegram_producer.get_sources"
+    ) as mock_get_sources:
+        mock_get_sources.return_value = mock_sources
 
         with patch(
-            "ai_news_bot.ai.telegram_producer.add_news_to_db"
-        ) as mock_add:
-            mock_add.return_value = None
+            "ai_news_bot.ai.telegram_producer."
+            "fetch_and_parse_telegram_channels"
+        ) as mock_fetch:
+            mock_fetch.return_value = mock_news_items
 
-            await telegram_producer(
-                channel_names=["test_channel"]
-            )
+            with patch(
+                "ai_news_bot.ai.telegram_producer.add_news_to_db"
+            ) as mock_add:
+                mock_add.return_value = None
 
-            mock_fetch.assert_called_once_with(
-                channel_names=["test_channel"]
-            )
-            mock_add.assert_called_once_with(mock_news_items)
+                await telegram_producer()
+
+                mock_get_sources.assert_called_once_with(telegram=True)
+                mock_fetch.assert_called_once_with(
+                    channel_urls=list(mock_sources.values())
+                )
+                mock_add.assert_called_once_with(mock_news_items)
+
+
+@pytest.mark.anyio
+async def test_telegram_producer_no_channels():
+    """Test telegram_producer when no channels are configured."""
+    with patch(
+        "ai_news_bot.ai.telegram_producer.get_sources"
+    ) as mock_get_sources:
+        mock_get_sources.return_value = {}
+
+        with patch(
+            "ai_news_bot.ai.telegram_producer."
+            "fetch_and_parse_telegram_channels"
+        ) as mock_fetch:
+            with patch(
+                "ai_news_bot.ai.telegram_producer.add_news_to_db"
+            ) as mock_add:
+                await telegram_producer()
+
+                mock_get_sources.assert_called_once_with(telegram=True)
+                # Should not call fetch or add when no channels configured
+                mock_fetch.assert_not_called()
+                mock_add.assert_not_called()

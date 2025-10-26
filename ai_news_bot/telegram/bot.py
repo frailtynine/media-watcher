@@ -10,6 +10,7 @@ from langdetect import detect
 
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.crud.news_task import news_task_crud
+from ai_news_bot.db.crud.settings import settings_crud
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.schemas import TelegramUser
@@ -79,6 +80,16 @@ async def handle_callback_query(
     await query.answer()
     logger.info(f"Received callback data: {callback_data}")
     async with get_standalone_session() as session:
+        settings = await settings_crud.get_all_objects(session=session)
+        if settings:
+            deepl_api_key = settings[0].deepl
+        if not deepl_api_key:
+            logger.warning("Deepl API key not found in settings.")
+            await send_message(
+                chat_id=query.message.chat.id,
+                text="Ключ Deepl API не настроен.",
+            )
+            return
         if callback_data["action"] == "irr":
             await news_task_crud.add_false_positive(
                 news=callback_data["news"],
@@ -89,7 +100,7 @@ async def handle_callback_query(
             if "news" in callback_data:
                 article = get_full_text(callback_data["news"].link)
                 if article:
-                    translated_text = translate_article(article)
+                    translated_text = translate_article(article, deepl_api_key)
                     if len(translated_text) > 4000:
                         chunks = chunk_message(translated_text)
                         for chunk in chunks:
@@ -109,7 +120,7 @@ async def handle_callback_query(
                     ))
                     await send_message(
                         chat_id=query.message.chat.id,
-                        text="Не удалось получить полный текст статьи.",
+                        text=("Не удалось получить полный текст статьи."),
                     )
             else:
                 await send_message(

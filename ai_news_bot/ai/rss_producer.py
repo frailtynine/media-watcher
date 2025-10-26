@@ -2,7 +2,12 @@ import logging
 import asyncio
 import httpx
 
-from ai_news_bot.ai.utils import parse_rss_feed, get_rss_feed, add_news_to_db
+from ai_news_bot.ai.utils import (
+    parse_rss_feed,
+    get_rss_feed,
+    add_news_to_db,
+    get_sources
+)
 
 
 logger = logging.getLogger(__name__)
@@ -13,6 +18,10 @@ async def rss_producer(
 ):
     logger.info("Starting RSS producer...")
     tasks = []
+    rss_urls = await get_sources(rss=True)
+    if not rss_urls:
+        logger.info("No RSS URLs configured.")
+        return
     for url in rss_urls:
         tasks.append(get_rss_feed(url))
     try:
