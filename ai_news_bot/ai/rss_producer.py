@@ -22,6 +22,7 @@ async def rss_producer(
     if not rss_urls:
         logger.info("No RSS URLs configured.")
         return
+    rss_urls = list(rss_urls.values())
     for url in rss_urls:
         tasks.append(get_rss_feed(url))
     try:
