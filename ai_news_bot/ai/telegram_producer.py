@@ -19,11 +19,10 @@ RSS_HUB_HOSTS = [
     "rsshub.ktachibana.party",
     "rsshub.isrss.com",
     "rsshub.asailor.org"
-
 ]
 
 
-async def fetch_rss_feed(channel_url: str) -> httpx.Response:
+async def fetch_rss_feed(channel_url: str) -> httpx.Response | None:
     channel_name = channel_url.replace("https://t.me/", "").rstrip("/")
     async with httpx.AsyncClient() as client:
         for host in RSS_HUB_HOSTS:

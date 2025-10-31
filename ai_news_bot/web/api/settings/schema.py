@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from enum import Enum
 
 
 class SettingsSchema(BaseModel):
@@ -10,3 +11,14 @@ class SettingsSchema(BaseModel):
     model_config = ConfigDict(
         from_attributes=True
     )
+
+
+class SourceType(str, Enum):
+    TELEGRAM = "telegram"
+    RSS = "rss"
+
+
+class SourceRequestSchema(BaseModel):
+    source_url: str
+    source_name: str
+    source_type: SourceType
