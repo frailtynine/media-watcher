@@ -7,7 +7,6 @@ import deepl
 from openai import AsyncOpenAI
 from rss_parser import RSSParser
 
-from ai_news_bot.settings import settings
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
@@ -17,29 +16,31 @@ from ai_news_bot.db.crud.settings import settings_crud
 
 logger = logging.getLogger(__name__)
 
-
-async def check_balance():
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://api.deepseek.com/user/balance",
-            headers={"Authorization": f"Bearer {settings.deepseek}"},
-        )
-        if response.status_code == 200:
-            response_json = response.json()
-            if not response_json.get("is_available"):
-                await send_deepseek_balance_alert(zero_balance=True)
-                logger.warning("DeepSeek balance is zero.")
-            else:
-                balance = response_json["balance_infos"][0]["total_balance"]
-                if float(balance) < 1:
-                    await send_deepseek_balance_alert(balance=balance)
-                    logger.warning(
-                        f"DeepSeek balance is low: ${balance:.2f}"
-                    )
-        else:
-            logger.error(
-                f"Failed to retrieve balance: {response.status_code}"
-            )
+# TODO: Use only with admin API key
+# async def check_balance():
+#     async with get_standalone_session() as session:
+#         user_settings = await settings_crud.get_all_objects(session=session)
+#         if not user_settings or not user_settings[0].deepseek:
+#             logger.warning("DeepSeek API key not found in settings.")
+#             return
+#         api_key = user_settings[0].deepseek
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(
+#             "https://api.openai.com/v1/organization/costs",
+#             headers={"Authorization": f"Bearer {api_key}"},
+#         )
+#         if response.status_code == 200:
+#             res_json = response.json()
+#             balance = res_json["data"][0]["results"][0]["amount"]["value"]
+#             if float(balance) < 1:
+#                 await send_deepseek_balance_alert(balance=balance)
+#                 logger.warning(
+#                     f"DeepSeek balance is low: ${balance:.2f}"
+#                 )
+#         else:
+#             logger.error(
+#                 f"Failed to retrieve balance: {response.status_code}"
+#             )
 
 
 async def send_deepseek_balance_alert(
@@ -101,7 +102,7 @@ async def translate_with_deepseek(
         if settings:
             deepseek_api_key = settings[0].deepseek
         else:
-            logger.warning("DeepSeek API key not found in settings.")
+            logger.warning("AI API key not found in settings.")
             return text
     try:
         async with AsyncOpenAI(

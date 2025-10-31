@@ -8,6 +8,7 @@ from ai_news_bot.web.api.settings.schema import (
     SettingsSchema,
     SourceRequestSchema,
     SourceType,
+    ApiSettingsSchema
 )
 from ai_news_bot.web.api.settings.validators import (
     validate_telegram_channel_url,
@@ -47,7 +48,7 @@ async def get_settings(
 
 @router.put("/", response_model=SettingsSchema, name="update_settings")
 async def update_settings(
-    updated_settings: SettingsSchema,
+    updated_settings: ApiSettingsSchema,
     session: AsyncSession = Depends(get_db_session),
     user: User = Depends(current_active_user),
 ) -> SettingsSchema:

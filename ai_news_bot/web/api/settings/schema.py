@@ -13,6 +13,11 @@ class SettingsSchema(BaseModel):
     )
 
 
+class ApiSettingsSchema(BaseModel):
+    deepseek: str | None = None
+    deepl: str | None = None
+
+
 class SourceType(str, Enum):
     TELEGRAM = "telegram"
     RSS = "rss"

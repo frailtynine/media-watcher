@@ -9,7 +9,6 @@ from ai_news_bot.services.redis.lifespan import init_redis, shutdown_redis
 from ai_news_bot.settings import settings
 from ai_news_bot.telegram.bot import setup_bot, shutdown_bot
 from ai_news_bot.db.models.users import create_user
-from ai_news_bot.ai.utils import check_balance
 from ai_news_bot.ai.telegram_producer import telegram_producer
 from ai_news_bot.ai.rss_producer import rss_producer
 from ai_news_bot.ai.news_consumer import news_consumer
@@ -75,11 +74,6 @@ async def lifespan_setup(
     scheduler.start()
     app.state.scheduler = scheduler
     scheduler.add_job(
-        check_balance,
-        "interval",
-        minutes=60,
-    )
-    scheduler.add_job(
         telegram_producer,
         "interval",
         minutes=1,
@@ -88,7 +82,6 @@ async def lifespan_setup(
         rss_producer,
         "interval",
         minutes=1,
-        args=[RSS_URLS],
     )
     scheduler.add_job(
         news_consumer,

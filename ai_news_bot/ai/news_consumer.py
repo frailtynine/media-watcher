@@ -48,16 +48,15 @@ async def process_news(
 ) -> bool:
     async with AsyncOpenAI(
         api_key=deepseek_api_key,
-        base_url="https://api.deepseek.com",
         timeout=15.0,
     ) as client:
         false_positives = "\n".join(
-            f"- {item['title']} \n\n {item['description']}"
+            f"- {item['title']} \n\n {item['description'][:500]}"
             for item in news_task.false_positives[-20:]
         )
         try:
             response = await client.chat.completions.create(
-                model="deepseek-chat",
+                model="gpt-5-nano",
                 messages=[
                     {
                         "role": "system",
@@ -90,7 +89,7 @@ async def process_news(
                 return False
             else:
                 logger.warning(
-                    f"Unexpected response from Deepseek: "
+                    f"Unexpected response from AI: "
                     f"{response.choices[0].message.content}",
                 )
                 return False
@@ -145,13 +144,22 @@ async def news_consumer() -> None:
         for news in unprocessed_news:
             try:
                 logger.info(f"Processing news: {news.title}")
+                no_faults = True
                 for news_task in tasks:
-                    is_relevant = await process_news(
-                        news=news,
-                        news_task=news_task,
-                        initial_prompt=prompt.role,
-                        deepseek_api_key=deepseek_api_key,
-                    )
+                    try:
+                        is_relevant = await process_news(
+                            news=news,
+                            news_task=news_task,
+                            initial_prompt=prompt.role,
+                            deepseek_api_key=deepseek_api_key,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error processing news '{news.title}' "
+                            f"for task '{news_task.title}': {e}"
+                        )
+                        no_faults = False
+                        continue
                     if is_relevant:
                         logger.info(
                             f"News '{news.title}' is relevant for task "
@@ -171,8 +179,10 @@ async def news_consumer() -> None:
                             f"'{news_task.title}'",
                         )
                 # Mark news as processed after checking against all tasks
-                async with get_standalone_session() as session:
-                    await crud_news.mark_news_as_processed(session, news.id)
-                    logger.info(f"Marked news {news.title} as processed.")
+                if no_faults:
+                    async with get_standalone_session() as session:
+                        await crud_news.mark_news_as_processed(
+                            session, news.id
+                        )
             except Exception as e:
                 logger.error(f"Error processing news {news.title}: {e}")
