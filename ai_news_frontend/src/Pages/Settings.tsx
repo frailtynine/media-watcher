@@ -2,7 +2,7 @@ import { Box, Heading, Button, Textarea, Text, Input, List, Field } from "@chakr
 import { useEffect, useState } from "react";
 import type { Prompt, Settings } from "../interface";
 import { promptApi, settingsAPI } from "../api";
-import { set, useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 type SettingsFormData = Prompt & Settings;
 
