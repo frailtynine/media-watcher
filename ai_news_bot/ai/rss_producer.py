@@ -13,17 +13,15 @@ from ai_news_bot.ai.utils import (
 logger = logging.getLogger(__name__)
 
 
-async def rss_producer(
-    rss_urls: list[str],
-):
+async def rss_producer():
     logger.info("Starting RSS producer...")
     tasks = []
     rss_urls = await get_sources(rss=True)
     if not rss_urls:
         logger.info("No RSS URLs configured.")
         return
-    rss_urls = list(rss_urls.values())
-    for url in rss_urls:
+    rss_urls_list = list(rss_urls.values())
+    for url in rss_urls_list:
         tasks.append(get_rss_feed(url))
     try:
         responses = await asyncio.gather(

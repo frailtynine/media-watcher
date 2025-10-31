@@ -1,12 +1,12 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample, Settings } from './interface';
+import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample, Settings, ApiSettings } from './interface';
 
 
-const API_BASE_URL = '/api';
+// const API_BASE_URL = '/api';
 // For local development, uncomment the following line and comment the above line
-// const API_BASE_URL = 'http://localhost:8050/api';
+const API_BASE_URL = 'http://localhost:8050/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 

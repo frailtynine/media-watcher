@@ -109,3 +109,8 @@ export interface Settings {
   rss_urls: Record<string, string>;
   tg_urls: Record<string, string>;
 }
+
+ export interface ApiSettings {
+  deepseek: string | null;
+  deepl: string | null;
+ }
