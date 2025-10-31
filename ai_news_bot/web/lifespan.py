@@ -79,22 +79,22 @@ async def lifespan_setup(
         "interval",
         minutes=60,
     )
-    # scheduler.add_job(
-    #     telegram_producer,
-    #     "interval",
-    #     minutes=1,
-    # )
-    # scheduler.add_job(
-    #     rss_producer,
-    #     "interval",
-    #     minutes=1,
-    #     args=[RSS_URLS],
-    # )
-    # scheduler.add_job(
-    #     news_consumer,
-    #     "interval",
-    #     minutes=1,
-    # )
+    scheduler.add_job(
+        telegram_producer,
+        "interval",
+        minutes=1,
+    )
+    scheduler.add_job(
+        rss_producer,
+        "interval",
+        minutes=1,
+        args=[RSS_URLS],
+    )
+    scheduler.add_job(
+        news_consumer,
+        "interval",
+        minutes=1,
+    )
     app.middleware_stack = app.build_middleware_stack()
 
     yield
