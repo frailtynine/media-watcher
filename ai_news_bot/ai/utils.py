@@ -96,7 +96,7 @@ def translate_article(
 async def translate_with_deepseek(
     text: str,
 ) -> str:
-    """Translate text to Russian using DeepSeek API."""
+    """Translate text to Russian using AI API."""
     async with get_standalone_session() as session:
         settings = await settings_crud.get_all_objects(session=session)
         if settings:
@@ -107,11 +107,10 @@ async def translate_with_deepseek(
     try:
         async with AsyncOpenAI(
             api_key=deepseek_api_key,
-            base_url="https://api.deepseek.com",
             timeout=30.0,
         ) as client:
             response = await client.chat.completions.create(
-                model="deepseek-chat",
+                model="gpt-5-nano",
                 messages=[
                     {
                         "role": "system",
