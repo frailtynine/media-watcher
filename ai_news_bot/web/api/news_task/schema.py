@@ -39,6 +39,8 @@ class NewsTaskUpdateSchema(NewsTaskBaseSchema):
 
     is_active: bool | None = None
     end_date: datetime | None = None
+    non_relevant_news: list[str] | None = None
+    relevant_news: list[str] | None = None
 
 
 class NewsTaskRedisSchema(NewsTaskBaseSchema):
@@ -64,3 +66,11 @@ class NewsTaskReadSchema(NewsTaskBaseSchema):
     created_at: datetime
     positives: list[RSSItemSchema] | None
     false_positives: list[RSSItemSchema] | None
+    non_relevant_news: list[str] | None
+    relevant_news: list[str] | None
+
+
+class AICheckPayloadSchema(BaseModel):
+    """Schema for AI check payload."""
+    news_task_id: int
+    news_item: str

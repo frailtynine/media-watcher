@@ -44,6 +44,16 @@ class NewsTask(Base):
         nullable=True,
         default=None,
     )
+    non_relevant_news: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        server_default="[]",
+    )
+    relevant_news: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+        server_default="[]",
+    )
 
     def __repr__(self):
         return (
