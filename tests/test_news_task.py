@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest import mock
 
 import pytest
 from fastapi import FastAPI
@@ -9,7 +10,8 @@ from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.models.users import User
 from ai_news_bot.web.api.news_task.schema import (
     NewsTaskCreateSchema,
-    RSSItemSchema
+    NewsTaskUpdateSchema,
+    RSSItemSchema,
 )
 
 
@@ -21,7 +23,6 @@ async def test_news_task_endpoints(
 ) -> None:
     """Tests news task creation."""
     url = fastapi_app.url_path_for("create_news_task")
-    print(auth_headers)
     payload = NewsTaskCreateSchema(
         title="Test Task",
         description="This is a test task",
@@ -35,10 +36,13 @@ async def test_news_task_endpoints(
     assert response.status_code == 200
     assert response.json()["title"] == payload.title
     # Test updates
-    updated_payload = NewsTaskCreateSchema(
+    updated_payload = NewsTaskUpdateSchema(
         title="Updated Test Task",
         description="This is an updated test task",
         end_date=(datetime.now() + timedelta(days=5)),
+        is_active=True,
+        relevant_news=["News one", "News two"],
+        non_relevant_news=["News three", "News four"],
     )
     update_url = fastapi_app.url_path_for(
         "update_news_task",
@@ -51,6 +55,9 @@ async def test_news_task_endpoints(
     )
     assert update_response.status_code == 200
     assert update_response.json()["title"] == updated_payload.title
+    assert update_response.json()["relevant_news"] == (
+        updated_payload.relevant_news
+    )
     wrong_id_url = fastapi_app.url_path_for("update_news_task", task_id=99999)
     wrong_id_response = await client.put(
         wrong_id_url,
@@ -102,3 +109,54 @@ async def test_news_crud(dbsession: AsyncSession, test_user: str) -> None:
     )
     assert len(updated_task.false_positives) == 1
     assert retrieved_false_positives[0].title == false_positive.title
+
+
+@pytest.mark.anyio
+async def test_ai_results_endpoint(
+    fastapi_app: FastAPI,
+    client: AsyncClient,
+    auth_headers: dict,
+    dbsession: AsyncSession,
+    test_user: str,
+) -> None:
+    """Tests AI results endpoint."""
+    user = await dbsession.get(User, test_user)
+    new_task = NewsTaskCreateSchema(
+        title="AI Results Test Task",
+        description="This is a test task for AI results",
+        end_date=(datetime.now() + timedelta(days=7)),
+    )
+    created_task = await news_task_crud.create(
+        session=dbsession,
+        obj_in=new_task,
+        user=user,
+    )
+    url = fastapi_app.url_path_for(
+        "check_ai_news_task",
+    )
+    payload = {
+        "news_task_id": created_task.id,
+        "news_item": "This is a test news item to be evaluated by AI."
+    }
+
+    # Mock the process_news function to avoid OpenAI API calls
+    patch_target = "ai_news_bot.web.api.news_task.views.process_news"
+    with mock.patch(patch_target) as mock_process:
+        mock_process.return_value = True
+
+        response = await client.post(
+            url,
+            json=payload,
+            headers={"Content-Type": "application/json", **auth_headers},
+        )
+
+        # Verify the mock was called with correct parameters
+        mock_process.assert_called_once()
+        call_args = mock_process.call_args
+        assert call_args[1]["news"] == payload["news_item"]
+        assert call_args[1]["news_task"] == created_task
+        assert "initial_prompt" in call_args[1]
+        assert "deepseek_api_key" in call_args[1]
+
+    assert response.status_code == 200
+    assert response.json() is True

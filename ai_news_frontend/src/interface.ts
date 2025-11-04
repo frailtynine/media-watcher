@@ -13,6 +13,8 @@ export interface NewsTaskCreate {
   description: string;
   end_date: string;
   link?: string;
+  relevant_news?: string[];
+  non_relevant_news?: string[];
 }
 
 export interface NewsTask extends NewsTaskCreate{

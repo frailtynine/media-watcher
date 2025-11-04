@@ -2,13 +2,15 @@ import { Card, Text, Box, Flex, IconButton, Input, Stack, Table } from "@chakra-
 import { Textarea } from "@chakra-ui/react";
 import type { NewsTask, NewsTaskCreate } from "../interface";
 import { FiEdit2, FiCheck } from "react-icons/fi";
-import { FaPause, FaPlay } from "react-icons/fa";
+import { FaPause, FaPlay, FaBan, FaRegCheckCircle } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
+import { MdRefresh } from "react-icons/md";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaRegCopy } from "react-icons/fa";
 import { useComponent } from "../hooks/Сomponent";
 import AllTasks from "../Pages/Dashboard";
+import { newsTaskApi } from "../api";
 
 
 interface NewsTaskCardProps {
@@ -18,9 +20,10 @@ interface NewsTaskCardProps {
   onDelete?: (newsTaskId: number) => void;
   listView?: boolean;
   editMode?: boolean;
+  onCheck?: (newsTask: NewsTask) => void;
 }
 
-export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, listView, editMode }: NewsTaskCardProps) {
+export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, listView, editMode, onCheck }: NewsTaskCardProps) {
   const { setCurrentComponent } = useComponent();
 
   // useForm for create mode
@@ -33,18 +36,92 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
       title: "",
       description: "",
       end_date: "",
-      link: ""
+      link: "",
+      relevant_news: [],
+      non_relevant_news: [],
     },
   });
 
   // Local state for edit mode
   const [task, setTask] = useState<NewsTask>(newsTask || ({} as NewsTask));
+  const [newRelevantNews, setNewRelevantNews] = useState(""); // Add this for input
+  const [newNonRelevantNews, setNewNonRelevantNews] = useState(""); // Add this for input
+  const [checkedRelevant, setCheckedRelevant] = useState<any[]>([]); // For checkboxes
+  const [checkedNonRelevant, setCheckedNonRelevant] = useState<any[]>([]); // For checkboxes
 
   // Handle create submit
   const onSubmit = (data: NewsTaskCreate) => {
     if (onCreate) {
       onCreate(data);
       reset();
+    }
+  };
+
+  const checkNews = async (news: NewsTask) => {
+    setCheckedRelevant([]); 
+    setCheckedNonRelevant([]);
+    if (news.relevant_news && news.relevant_news.length > 0) {
+      const relevantResults = await Promise.all(
+        news.relevant_news.map(async (item, index) => {
+          const result = await newsTaskApi.checkRelevantNews(news.id, item);
+          return { index, result };
+        })
+      );
+      setCheckedRelevant(relevantResults);
+    }
+    if (news.non_relevant_news && news.non_relevant_news.length > 0) {
+      const nonRelevantResults = await Promise.all(
+        news.non_relevant_news.map(async (item, index) => {
+          const result = await newsTaskApi.checkRelevantNews(news.id, item);
+          return { index, result };
+        })
+      );
+      console.log("Non-relevant results:", nonRelevantResults);
+      setCheckedNonRelevant(nonRelevantResults);
+    }
+  };
+
+const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
+  const checkedArray = isRelevant ? checkedRelevant : checkedNonRelevant;
+  const found = checkedArray.find(item => item.index === itemIndex);
+  return found ? found.result : null;
+};
+
+  const addNews = (isRelevant: boolean) => {
+    let updatedTask = task;
+    if (isRelevant && newRelevantNews.trim()) {
+      updatedTask = {
+        ...task,
+        relevant_news: [...(task.relevant_news || []), newRelevantNews.trim()]
+      };
+      setTask(updatedTask);
+    } else if (!isRelevant && newNonRelevantNews.trim()) {
+      updatedTask = {
+        ...task,
+        non_relevant_news: [...(task.non_relevant_news || []), newNonRelevantNews.trim()]
+      };
+      setTask(updatedTask);
+    }
+    setNewRelevantNews(""); // Clear input
+    setNewNonRelevantNews(""); // Clear input
+
+    // Immediately save to backend
+    if (onEdit) {
+      onEdit(updatedTask);
+    }
+  };
+
+  const removeNews = (news: string, isRelevant: boolean) => {
+    const updatedTask = {
+      ...task,
+      relevant_news: isRelevant ? task.relevant_news?.filter((n) => n !== news) || [] : task.relevant_news,
+      non_relevant_news: isRelevant ? task.non_relevant_news : task.non_relevant_news?.filter((n) => n !== news) || []
+    };
+    setTask(updatedTask);
+
+    // Immediately save to backend
+    if (onEdit) {
+      onEdit(updatedTask);
     }
   };
 
@@ -110,6 +187,7 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
   }
 
   return (
+    <Box display="flex" flexDirection={"row"}>
     <Card.Root w={"600px"}>
       <Card.Body gap="2" position="relative">
         <Flex justify="space-between" align="start">
@@ -236,6 +314,7 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
           </IconButton>
         )}
         {!onCreate && (
+          <>
           <IconButton
             aria-label="Delete"
             colorScheme="red"
@@ -248,11 +327,125 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
           >
             <MdDelete />
           </IconButton>
+          <IconButton
+            aria-label="Check News"
+            colorScheme="purple"
+            size="xs"
+            onClick={() => {
+              if (newsTask) {
+                checkNews(task);
+              }
+            }}
+          >
+            <MdRefresh />
+          </IconButton>
+          </>
           )
         }
         </Flex>
       </Stack>
       </Card.Footer>
     </Card.Root>
+    {/* second column */}
+    <Box display="flex" flexDirection="column" ml={2}>
+      {onEdit && (
+        <>
+        <Text fontWeight="bold" mt={4}>Relevant News:</Text>
+        {task?.relevant_news && (
+          task.relevant_news.map((news, index) => {
+            const checkResult = getCheckResult(index, true);
+            return(
+            <Box display="flex" flexDirection="row" alignItems="center" key={index} gap={2} mb={1}>
+              <Text 
+                key={index}
+                fontSize={"xs"}
+              >{news}</Text>
+              <IconButton
+                aria-label="Delete Relevant News"
+                colorScheme="red"
+                size="xs"
+                onClick={() => removeNews(news, true)}
+              >
+                <MdDelete />
+              </IconButton>
+              {checkResult !== null && (
+                <Box>
+                  {checkResult ? (
+                    <FaRegCheckCircle color="green" />
+                  ) : (
+                    <FaBan color="red" />
+                  )}
+                </Box>
+              )}
+              
+            </Box>
+          )})
+        )}
+        <Box display="flex" flexDirection="row">
+          <Textarea placeholder="Add relevant news example" rows={3}
+            value={newRelevantNews}
+            onChange={(e) => setNewRelevantNews(e.target.value)}
+          />
+          <IconButton
+            aria-label="Add Relevant News"
+            colorScheme="green"
+            size="sm"
+            mt={2}
+            ml={2}
+            onClick={() => addNews(true)}
+          >
+            <FiCheck />
+          </IconButton>
+        </Box>
+        <Text fontWeight="bold" mt={4}>Non Relevant News:</Text>
+        {task?.non_relevant_news && (
+          task.non_relevant_news.map((news, index) => {
+            const checkResult = getCheckResult(index, false);
+            return (
+            <Box display="flex" flexDirection="row" alignItems="center" key={index} gap={2} mb={1}>
+              <Text 
+                key={index}
+                fontSize={"xs"}
+              >{news}</Text>
+              <IconButton
+                aria-label="Delete Non Relevant News"
+                colorScheme="red"
+                size="xs"
+                onClick={() => removeNews(news, false)}
+              >
+                <MdDelete />
+              </IconButton>
+              {checkResult !== null && (
+                <Box>
+                  {!checkResult ? (
+                    <FaRegCheckCircle color="green" />
+                  ) : (
+                    <FaBan color="red" />
+                  )}
+                </Box>
+              )}
+            </Box>
+          )})
+        )}
+        <Box display="flex" flexDirection="row">
+          <Textarea placeholder="Add non relevant news example" rows={3}
+            value={newNonRelevantNews}
+            onChange={(e) => setNewNonRelevantNews(e.target.value)}
+          />
+          <IconButton
+            aria-label="Add Non Relevant News"
+            colorScheme="green"
+            size="sm"
+            mt={2}
+            ml={2}
+            onClick={() => addNews(false)}
+          >
+            <FiCheck />
+          </IconButton>
+        </Box>
+        </>
+      )}
+    </Box>
+  </Box>
   );
 }

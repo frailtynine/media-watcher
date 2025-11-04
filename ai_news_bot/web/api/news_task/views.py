@@ -3,13 +3,17 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai_news_bot.db.crud.news_task import news_task_crud
+from ai_news_bot.db.crud.settings import settings_crud
+from ai_news_bot.db.crud.prompt import crud_prompt
 from ai_news_bot.db.dependencies import get_db_session
 from ai_news_bot.db.models.users import User, current_active_user
 from ai_news_bot.web.api.news_task.schema import (
     NewsTaskCreateSchema,
     NewsTaskReadSchema,
     NewsTaskUpdateSchema,
+    AICheckPayloadSchema
 )
+from ai_news_bot.ai.news_consumer import process_news
 
 router = APIRouter()
 
@@ -27,7 +31,11 @@ async def create_news_task(
     :param session: The database session.
     :return: The created task.
     """
-    return await news_task_crud.create(session=session, obj_in=new_task, user=user)
+    return await news_task_crud.create(
+        session=session,
+        obj_in=new_task,
+        user=user
+    )
 
 
 @router.get("/", response_model=list[NewsTaskReadSchema])
@@ -108,6 +116,35 @@ async def update_news_task(
     return updated_news_task
 
 
+@router.post("/ai_results", response_model=bool)
+async def check_ai_news_task(
+    payload: AICheckPayloadSchema,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(current_active_user),
+) -> bool:
+    """
+    Check the AI results of a specific news task by ID.
+
+    :param task_id: The ID of the task to check.
+    :return: A list of boolean values indicating the AI status.
+    """
+    news_task = await news_task_crud.get_object_by_id(
+        session=session,
+        obj_id=payload.news_task_id,
+        user=user,
+    )
+    if not news_task:
+        raise HTTPException(status_code=404, detail="News task not found.")
+    prompts = await crud_prompt.get_or_create(session=session)
+    settings = await settings_crud.get_or_create(session=session)
+    return await process_news(
+        news=payload.news_item,
+        news_task=news_task,
+        initial_prompt=prompts.role,
+        deepseek_api_key=settings.deepseek,
+    )
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -119,7 +156,9 @@ async def websocket_endpoint(
         await pubsub.subscribe("relevant_news")
         try:
             while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True)
+                message = await pubsub.get_message(
+                    ignore_subscribe_messages=True
+                )
                 if message:
                     await websocket.send_text(message["data"].decode())
         except Exception as e:

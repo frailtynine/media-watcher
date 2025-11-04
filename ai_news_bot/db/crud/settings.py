@@ -36,7 +36,7 @@ class SettingsCRUD(BaseCRUD):
         await session.flush()
         await session.refresh(settings)
         return settings
-    
+
     async def remove_source_from_dict(
         self,
         session: AsyncSession,
@@ -66,6 +66,30 @@ class SettingsCRUD(BaseCRUD):
             await session.flush()
             await session.refresh(settings)
         return settings
+
+    async def get_or_create(
+        self,
+        session: AsyncSession,
+    ) -> Settings:
+        """Get the settings object, or create it if it doesn't exist.
+
+        Args:
+            session (AsyncSession): Database session.
+
+        """
+        settings = await self.get_all_objects(session=session)
+        if not settings:
+            settings = Settings(
+                deepseek=None,
+                deepl=None,
+                rss_urls={},
+                tg_urls={},
+            )
+            session.add(settings)
+            await session.flush()
+            await session.refresh(settings)
+            return settings
+        return settings[0]
 
 
 settings_crud = SettingsCRUD(Settings)

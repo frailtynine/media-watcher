@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from openai import AsyncOpenAI
 
@@ -41,7 +41,7 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
 
 
 async def process_news(
-    news: "News",
+    news: Union["News", str],
     news_task: "NewsTask",
     initial_prompt: str,
     deepseek_api_key: str
@@ -54,9 +54,13 @@ async def process_news(
             f"- {item['title']} \n\n {item['description'][:500]}"
             for item in news_task.false_positives[-20:]
         )
+        if type(news) is not str:
+            news_item = f"{news.title} \n {news.description}."
+        else:
+            news_item = news
         try:
             response = await client.chat.completions.create(
-                model="gpt-5-nano",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",
@@ -67,7 +71,7 @@ async def process_news(
                     {
                         "role": "user",
                         "content": (
-                            f"News: {news.title} \n {news.description}. \n\n"
+                            f"News: {news_item} \n\n"
                             f"Filter: {news_task.title} \n\n"
                             f" {news_task.description}\n\n"
                             "Use the list of irrelevant items to "

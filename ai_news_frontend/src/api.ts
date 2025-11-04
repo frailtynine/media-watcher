@@ -4,9 +4,9 @@ import axios from 'axios';
 import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample, Settings } from './interface';
 
 
-const API_BASE_URL = '/api';
+// const API_BASE_URL = '/api';
 // For local development, uncomment the following line and comment the above line
-// const API_BASE_URL = 'http://localhost:8050/api';
+const API_BASE_URL = 'http://localhost:8050/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -211,6 +211,22 @@ export const newsTaskApi = {
     catch (error) {
       console.error(`Failed to update task ${taskId}:`, error);
       return null;
+    }
+  },
+
+  async checkRelevantNews(taskId: number, news: string): Promise<boolean> {
+    try {
+      const response = await api.post<boolean>(
+        "/news_task/ai_results",
+        { 
+          news_task_id: taskId,
+          news_item: news
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to check news relevance for task ${taskId}:`, error);
+      return false;
     }
   },
 
