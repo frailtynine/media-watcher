@@ -73,21 +73,21 @@ async def lifespan_setup(
     scheduler = AsyncIOScheduler()
     scheduler.start()
     app.state.scheduler = scheduler
-    # scheduler.add_job(
-    #     telegram_producer,
-    #     "interval",
-    #     minutes=1,
-    # )
-    # scheduler.add_job(
-    #     rss_producer,
-    #     "interval",
-    #     minutes=1,
-    # )
-    # scheduler.add_job(
-    #     news_consumer,
-    #     "interval",
-    #     minutes=1,
-    # )
+    scheduler.add_job(
+        telegram_producer,
+        "interval",
+        minutes=1,
+    )
+    scheduler.add_job(
+        rss_producer,
+        "interval",
+        minutes=1,
+    )
+    scheduler.add_job(
+        news_consumer,
+        "interval",
+        minutes=1,
+    )
     app.middleware_stack = app.build_middleware_stack()
 
     yield

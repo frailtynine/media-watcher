@@ -80,23 +80,24 @@ async def handle_callback_query(
     await query.answer()
     logger.info(f"Received callback data: {callback_data}")
     async with get_standalone_session() as session:
-        settings = await settings_crud.get_all_objects(session=session)
-        if settings:
-            deepl_api_key = settings[0].deepl
-        if not deepl_api_key:
-            logger.warning("Deepl API key not found in settings.")
-            await send_message(
-                chat_id=query.message.chat.id,
-                text="Ключ Deepl API не настроен.",
-            )
-            return
         if callback_data["action"] == "irr":
+            news = RSSItemSchema.model_validate(callback_data["news"])
             await news_task_crud.add_false_positive(
-                news=callback_data["news"],
+                news=news,
                 news_task_id=callback_data["task_id"],
                 session=session,
             )
         elif callback_data["action"] == "translate":
+            settings = await settings_crud.get_all_objects(session=session)
+            if settings:
+                deepl_api_key = settings[0].deepl
+            if not deepl_api_key:
+                logger.warning("Deepl API key not found in settings.")
+                await send_message(
+                    chat_id=query.message.chat.id,
+                    text="Ключ Deepl API не настроен.",
+                )
+                return
             if "news" in callback_data:
                 article = get_full_text(callback_data["news"].link)
                 if article:
@@ -276,13 +277,15 @@ async def send_task_message(
         )
         cleared_text = await translate_with_deepseek(cleared_text)
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    disable_web_page_preview = True
+    if "https://t.me" in news.link:
+        disable_web_page_preview = False
     await asyncio.wait_for(
         bot_app.bot.send_message(
             chat_id=chat_id,
             text=cleared_text,
             reply_markup=reply_markup,
-            disable_web_page_preview=True,
+            disable_web_page_preview=disable_web_page_preview,
             parse_mode="Markdown",
             disable_notification=True,
         ),

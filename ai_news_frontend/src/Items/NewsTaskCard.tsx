@@ -1,4 +1,4 @@
-import { Card, Text, Box, Flex, IconButton, Input, Stack, Table } from "@chakra-ui/react";
+import { Card, Text, Box, Flex, IconButton, Input, Table } from "@chakra-ui/react";
 import { Textarea } from "@chakra-ui/react";
 import type { NewsTask, NewsTaskCreate } from "../interface";
 import { FiEdit2, FiCheck } from "react-icons/fi";
@@ -7,7 +7,6 @@ import { MdDelete } from "react-icons/md";
 import { MdRefresh } from "react-icons/md";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { FaRegCopy } from "react-icons/fa";
 import { useComponent } from "../hooks/Сomponent";
 import AllTasks from "../Pages/Dashboard";
 import { newsTaskApi } from "../api";
@@ -76,7 +75,6 @@ export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, lis
           return { index, result };
         })
       );
-      console.log("Non-relevant results:", nonRelevantResults);
       setCheckedNonRelevant(nonRelevantResults);
     }
   };
@@ -187,11 +185,10 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
   }
 
   return (
-    <Box display="flex" flexDirection={"row"}>
-    <Card.Root w={"600px"}>
-      <Card.Body gap="2" position="relative">
-        <Flex justify="space-between" align="start">
-          <Box as="form" onSubmit={onCreate ? handleSubmit(onSubmit) : undefined} w="100%">
+    <Box display="flex" flexDirection="row" w="100%" h="100vh" gap={4}>
+    <Card.Root w="60%" h="100vh" display="flex" flexDirection="column">
+      <Card.Body gap="2" position="relative" flex="1" overflow="hidden">
+        <Box as="form" onSubmit={onCreate ? handleSubmit(onSubmit) : undefined} w="100%" h="100%" display="flex" flexDirection="column">
             <Card.Title marginBottom={2}>
                 <Flex align="center" gap={2}>
                 {onCreate ? (
@@ -207,34 +204,26 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
                 ) : (
                   <Flex align="center" gap={2}>
                     <Text flex={1}>{newsTask?.title}</Text>
-                    <IconButton
-                      aria-label="Copy title"
-                      size="2xs"
-                      onClick={() => {
-                      if (newsTask?.link) {
-                        navigator.clipboard.writeText(newsTask.link);
-                      }
-                      }}
-                    >
-                      <FaRegCopy />
-                    </IconButton>
                   </Flex>
                 )}
                 </Flex>
             </Card.Title>
-            <Card.Description>
+            <Card.Description flex="1" display="flex" flexDirection="column">
               {onCreate ? (
                 <Textarea
-                  rows={3}
+                  flex="1"
                   placeholder="Enter task description"
                   {...register("description", { required: true })}
+                  resize="none"
                 />
               ) : editMode ? (
                 <Textarea
-                  autoresize
+                  flex="1"
                   placeholder="Edit task description"
                   value={task.description}
                   onChange={(e) => setTask({ ...task, description: e.target.value })}
+                  onBlur={() => onEdit?.(task)}
+                  resize="none"
                 />
               ) : (
                 newsTask?.description
@@ -250,24 +239,10 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
               />
               </>
             )}
-          </Box>
-        </Flex>
+        </Box>
       </Card.Body>
-      <Card.Footer p={4} gap={2}>
-        <Stack>
-        <Flex>
-        {!onCreate && !editMode && newsTask && (
-          <>
-            <Text fontSize="sm" color="gray.500">
-              Created at: {new Date(newsTask.created_at).toLocaleDateString()}
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              End date: {new Date(newsTask.end_date).toLocaleDateString()}
-            </Text>
-          </>
-        )}
-        </Flex>
-        <Flex justifyContent={"flex-end"} gap={2} mt={2}>
+      <Card.Footer p={4} gap={2} mt="auto">
+        <Flex justifyContent={"flex-end"} gap={2}>
         {!onCreate && editMode && (
           <IconButton
             aria-label="Save"
@@ -343,101 +318,124 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
           )
         }
         </Flex>
-      </Stack>
       </Card.Footer>
     </Card.Root>
     {/* second column */}
-    <Box display="flex" flexDirection="column" ml={2}>
+    <Box 
+      display="flex" 
+      flexDirection="column" 
+      w="40%" 
+      maxH="100vh" 
+      overflowY="auto"
+      p={4}
+      bg="gray.50"
+      borderRadius="md"
+    >
       {onEdit && (
         <>
-        <Text fontWeight="bold" mt={4}>Relevant News:</Text>
+        <Text fontWeight="bold" mb={3} fontSize="md">Relevant News:</Text>
         {task?.relevant_news && (
           task.relevant_news.map((news, index) => {
             const checkResult = getCheckResult(index, true);
             return(
-            <Box display="flex" flexDirection="row" alignItems="center" key={index} gap={2} mb={1}>
+            <Box display="flex" alignItems="flex-start" key={index} gap={2} mb={3} p={2} bg="white" borderRadius="md" shadow="sm">
               <Text 
-                key={index}
-                fontSize={"xs"}
-              >{news}</Text>
-              <IconButton
-                aria-label="Delete Relevant News"
-                colorScheme="red"
-                size="xs"
-                onClick={() => removeNews(news, true)}
-              >
-                <MdDelete />
-              </IconButton>
-              {checkResult !== null && (
-                <Box>
-                  {checkResult ? (
-                    <FaRegCheckCircle color="green" />
-                  ) : (
-                    <FaBan color="red" />
-                  )}
-                </Box>
-              )}
-              
+                fontSize={"sm"}
+                flex={1}
+                wordBreak="break-word"
+                whiteSpace="normal"
+                lineHeight="1.4"
+              >{news.length > 100 ? news.slice(0, 100) + '...' : news}</Text>
+              <Flex gap={1} flexShrink={0}>
+                {checkResult !== null && (
+                  <Box>
+                    {checkResult ? (
+                      <FaRegCheckCircle color="green" />
+                    ) : (
+                      <FaBan color="red" />
+                    )}
+                  </Box>
+                )}
+                <IconButton
+                  aria-label="Delete Relevant News"
+                  colorScheme="red"
+                  size="xs"
+                  onClick={() => removeNews(news, true)}
+                >
+                  <MdDelete />
+                </IconButton>
+              </Flex>
             </Box>
           )})
         )}
-        <Box display="flex" flexDirection="row">
-          <Textarea placeholder="Add relevant news example" rows={3}
+        <Box mb={6}>
+          <Textarea 
+            placeholder="Add relevant news example" 
+            rows={3}
             value={newRelevantNews}
             onChange={(e) => setNewRelevantNews(e.target.value)}
+            mb={2}
+            resize="vertical"
           />
           <IconButton
             aria-label="Add Relevant News"
             colorScheme="green"
             size="sm"
-            mt={2}
-            ml={2}
+            alignSelf="flex-end"
             onClick={() => addNews(true)}
           >
             <FiCheck />
           </IconButton>
         </Box>
-        <Text fontWeight="bold" mt={4}>Non Relevant News:</Text>
+        <Text fontWeight="bold" mb={3} fontSize="md">Non Relevant News:</Text>
         {task?.non_relevant_news && (
           task.non_relevant_news.map((news, index) => {
             const checkResult = getCheckResult(index, false);
             return (
-            <Box display="flex" flexDirection="row" alignItems="center" key={index} gap={2} mb={1}>
+            <Box display="flex" alignItems="flex-start" key={index} gap={2} mb={3} p={2} bg="white" borderRadius="md" shadow="sm">
               <Text 
-                key={index}
-                fontSize={"xs"}
-              >{news}</Text>
-              <IconButton
-                aria-label="Delete Non Relevant News"
-                colorScheme="red"
-                size="xs"
-                onClick={() => removeNews(news, false)}
-              >
-                <MdDelete />
-              </IconButton>
-              {checkResult !== null && (
-                <Box>
-                  {!checkResult ? (
-                    <FaRegCheckCircle color="green" />
-                  ) : (
-                    <FaBan color="red" />
-                  )}
-                </Box>
-              )}
+                fontSize={"sm"}
+                flex={1}
+                wordBreak="break-word"
+                whiteSpace="normal"
+                lineHeight="1.4"
+              >{news.length > 100 ? news.slice(0, 100) + '...' : news}</Text>
+              <Flex gap={1} flexShrink={0}>
+                {checkResult !== null && (
+                  <Box>
+                    {!checkResult ? (
+                      <FaRegCheckCircle color="green" />
+                    ) : (
+                      <FaBan color="red" />
+                    )}
+                  </Box>
+                )}
+                <IconButton
+                  aria-label="Delete Non Relevant News"
+                  colorScheme="red"
+                  size="xs"
+                  onClick={() => removeNews(news, false)}
+                >
+                  <MdDelete />
+                </IconButton>
+              </Flex>
             </Box>
           )})
         )}
-        <Box display="flex" flexDirection="row">
-          <Textarea placeholder="Add non relevant news example" rows={3}
+        <Box>
+          <Textarea 
+            placeholder="Add non relevant news example" 
+            rows={3}
             value={newNonRelevantNews}
             onChange={(e) => setNewNonRelevantNews(e.target.value)}
+            mb={2}
+            resize="vertical"
           />
           <IconButton
             aria-label="Add Non Relevant News"
             colorScheme="green"
             size="sm"
-            mt={2}
-            ml={2}
+            alignSelf="flex-end"
             onClick={() => addNews(false)}
           >
             <FiCheck />

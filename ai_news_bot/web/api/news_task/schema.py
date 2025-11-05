@@ -16,6 +16,8 @@ class RSSItemSchema(BaseModel):
     description: str | None
     pub_date: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class NewsTaskBaseSchema(BaseModel):
     """
