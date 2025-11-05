@@ -4,7 +4,7 @@ import { authApi } from "../api";
 import { useComponent } from "../hooks/Сomponent";
 import AllTasks from "../Pages/Dashboard";
 import Settings from "../Pages/Settings";
-import LiveResults from "./LiveResults";
+// import LiveResults from "./LiveResults";
 
 export default function SideNav() {
   const { setCurrentComponent } = useComponent();
@@ -23,14 +23,14 @@ export default function SideNav() {
       >
         Tasks
       </Button>
-      <Button
+      {/* <Button
         colorScheme="teal"
         variant="solid"
         w={"100%"}
         onClick={() => setCurrentComponent(<LiveResults />)}
       >
         Live Results
-      </Button>
+      </Button> */}
       <Button
         colorScheme="teal"
         variant="solid"

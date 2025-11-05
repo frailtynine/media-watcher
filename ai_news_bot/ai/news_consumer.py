@@ -24,22 +24,23 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
         chat_ids = await telegram_user_crud.get_all_chat_ids(
             session=session
         )
+    description_text = (
+        f"{news.description}\n\n"
+        if news.description else ""
+    )
+    text = f"[{news.title}]({news.link})\n{description_text}"
+    if news.link.startswith("https://t.me"):
+        text = f"{news.link}"
     for chat_id in chat_ids:
-        description_text = (
-            f"{news.description}\n\n"
-            if news.description else ""
-        )
         await queue_task_message(
             chat_id=chat_id,
-            text=(
-                f"News: [{news.title}]({news.link})\n"
-                f"{description_text}"
-            ),
+            text=text,
             task_id=str(task_id),
             news=news,
         )
 
 
+# TODO: Untie from NewsTask and News models.
 async def process_news(
     news: Union["News", str],
     news_task: "NewsTask",
