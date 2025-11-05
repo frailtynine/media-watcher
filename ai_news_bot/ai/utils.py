@@ -108,15 +108,17 @@ async def translate_with_deepseek(
         async with AsyncOpenAI(
             api_key=deepseek_api_key,
             timeout=30.0,
+            max_retries=5
         ) as client:
             response = await client.chat.completions.create(
-                model="gpt-5-nano",
+                model="gpt-5-mini",
                 messages=[
                     {
                         "role": "system",
                         "content": (
                             "You are a helpful assistant that translates"
-                            "text to Russian.Return only the translated text."
+                            "markdown text to Russian. Return only "
+                            "the translated text, preserve links."
                         ),
                     },
                     {

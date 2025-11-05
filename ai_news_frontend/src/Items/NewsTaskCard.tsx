@@ -19,10 +19,9 @@ interface NewsTaskCardProps {
   onDelete?: (newsTaskId: number) => void;
   listView?: boolean;
   editMode?: boolean;
-  onCheck?: (newsTask: NewsTask) => void;
 }
 
-export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, listView, editMode, onCheck }: NewsTaskCardProps) {
+export default function NewsTaskCard({ newsTask, onEdit, onCreate, onDelete, listView, editMode }: NewsTaskCardProps) {
   const { setCurrentComponent } = useComponent();
 
   // useForm for create mode

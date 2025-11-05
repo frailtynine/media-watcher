@@ -1,163 +1,112 @@
-# ai_news_bot
+# AI News Bot - Intelligent News Aggregation System
 
-This project was generated using fastapi_template.
+AI-powered news monitoring that aggregates RSS feeds and Telegram channels, classifies content relevance using AI, and delivers filtered results via Telegram bot and web interface.
 
-## Poetry
+## 🚀 Features
 
-This project uses poetry. It's a modern dependency management
-tool.
+- **Multi-Source Aggregation**: RSS feeds and Telegram channels
+- **AI Classification**: OpenAI-compatible APIs for relevance evaluation  
+- **Custom Tasks**: Personalized news monitoring with custom criteria
+- **Telegram Integration**: Filtered news notifications via bot
+- **Web Dashboard**: React interface for task management
+- **Translation**: DeepL API integration for translation. In current implementation — from English to Russian.
+- **Real-time updates (WIP)**: WebSocket notifications and Redis caching — work in progress, not yet implemented.
 
-To run the project use this set of commands:
+## � Usage Guide
 
+### 0. Setup
+1. Open web interface at http://localhost:8050
+2. Go to Setiings. 
+3. Add AI API code and Deepl code.
+
+### 1. Creating News Tasks
+1. Open web interface at http://localhost:8050
+2. Click "Create New Task" 
+3. Define monitoring criteria:
+   - **Title**: Task name
+   - **Description**: Relevance criteria
+   - **Examples**: Add relevant/non-relevant samples
+   - **Test**: Run relevance criteria against samples to see how it works.
+
+### 2. Managing Sources
+1. Go to Settings page
+2. Add RSS feeds or Telegram channels
+3. Sources are validated automatically
+
+### 3. AI Processing
+- News fetched automatically every minute
+- AI evaluates against your tasks
+- Relevant news sent to Telegram
+- Accuracy improves with feedback
+
+## 🚀 Quick Start
+Create .env
+### Docker
 ```bash
-poetry install
-poetry run python -m ai_news_bot
+git clone <repository-url>
+cd media-watcher
+docker-compose up -d --build
 ```
 
-This will start the server on the configured host.
-
-You can find swagger documentation at `/api/docs`.
-
-You can read more about poetry here: https://python-poetry.org/
-
-## Docker
-
-You can start the project with docker using this command:
-
+### Local Development
 ```bash
-docker-compose up --build
+# Install dependencies
+make install && make install-frontend
+
+# Configure environment  
+cp .env.example .env
+
+# Run migrations and start
+make migrate
+make dev
 ```
 
-If you want to develop in docker with autoreload and exposed ports add `-f deploy/docker-compose.dev.yml` to your docker command.
-Like this:
+**Access:**
+- Web Interface: http://localhost:8050
+- API Docs: http://localhost:8050/api/docs
+
+## ⚙️ Configuration
+
+Create `.env` file with required settings:
 
 ```bash
-docker-compose -f docker-compose.yml -f deploy/docker-compose.dev.yml --project-directory . up --build
-```
+# Core Services
+MEDIA_WATCHER_TG_BOT_TOKEN=your_telegram_bot_token
+MEDIA_WATCHER_DEEPSEEK=your_deepseek_api_key
+MEDIA_WATCHER_DEEPL=your_deepl_api_key
 
-This command exposes the web application on port 8000, mounts current directory and enables autoreload.
+# Authentication
+MEDIA_WATCHER_USERS_SECRET=your_jwt_secret_key
+MEDIA_WATCHER_ADMIN_EMAIL=admin@example.com
+MEDIA_WATCHER_ADMIN_PASSWORD=secure_password
 
-But you have to rebuild image every time you modify `poetry.lock` or `pyproject.toml` with this command:
+# Database & Cache
+MEDIA_WATCHER_DB_FILE=./media_watcher.db
+MEDIA_WATCHER_REDIS_HOST=localhost
+MEDIA_WATCHER_REDIS_PORT=6379
 
-```bash
-docker-compose build
-```
-
-## Project structure
-
-```bash
-$ tree "ai_news_bot"
-ai_news_bot
-├── conftest.py  # Fixtures for all tests.
-├── db  # module contains db configurations
-│   ├── dao  # Data Access Objects. Contains different classes to interact with database.
-│   └── models  # Package contains different models for ORMs.
-├── __main__.py  # Startup script. Starts uvicorn.
-├── services  # Package for different external services such as rabbit or redis etc.
-├── settings.py  # Main configuration settings for project.
-├── static  # Static content.
-├── tests  # Tests for project.
-└── web  # Package contains web server. Handlers, startup config.
-    ├── api  # Package with all handlers.
-    │   └── router.py  # Main router.
-    ├── application.py  # FastAPI application configuration.
-    └── lifespan.py  # Contains actions to perform on startup and shutdown.
-```
-
-## Configuration
-
-This application can be configured with environment variables.
-
-You can create `.env` file in the root directory and place all
-environment variables here. 
-
-All environment variables should start with "AI_NEWS_BOT_" prefix.
-
-For example if you see in your "ai_news_bot/settings.py" a variable named like
-`random_parameter`, you should provide the "AI_NEWS_BOT_RANDOM_PARAMETER" 
-variable to configure the value. This behaviour can be changed by overriding `env_prefix` property
-in `ai_news_bot.settings.Settings.Config`.
-
-An example of .env file:
-```bash
-AI_NEWS_BOT_TG_BOT_TOKEN=
-AI_NEWS_BOT_RELOAD=True
-AI_NEWS_BOT_USERS_SECRET=
-AI_NEWS_BOT_DEEPSEEK=
-AI_NEWS_BOT_CORS_ORIGINS=["http://localhost:3000"]
-AI_NEWS_BOT_DB_FILE=./fastapi.db
-AI_NEWS_BOT_ADMIN_EMAIL=admin@example.com
-AI_NEWS_BOT_ADMIN_PASSWORD=adminadmin
-AI_NEWS_BOT_DEEPL=
-```
-
-You can read more about BaseSettings class here: https://pydantic-docs.helpmanual.io/usage/settings/
-
-## Pre-commit
-
-To install pre-commit simply run inside the shell:
-```bash
-pre-commit install
-```
-
-pre-commit is very useful to check your code before publishing it.
-It's configured using .pre-commit-config.yaml file.
-
-By default it runs:
-* black (formats your code);
-* mypy (validates types);
-* ruff (spots possible bugs);
-
-
-You can read more about pre-commit here: https://pre-commit.com/
-
-## Migrations
-
-If you want to migrate your database, you should run following commands:
-```bash
-# To run all migrations until the migration with revision_id.
-alembic upgrade "<revision_id>"
-
-# To perform all pending migrations.
-alembic upgrade "head"
-```
-
-### Reverting migrations
-
-If you want to revert migrations, you should run:
-```bash
-# revert all migrations up to: revision_id.
-alembic downgrade <revision_id>
-
-# Revert everything.
- alembic downgrade base
-```
-
-### Migration generation
-
-To generate migrations you should run:
-```bash
-# For automatic change detection.
-alembic revision --autogenerate
-
-# For empty file generation.
-alembic revision
+# Application  
+MEDIA_WATCHER_HOST=0.0.0.0
+MEDIA_WATCHER_PORT=8050
+MEDIA_WATCHER_CORS_ORIGINS=["http://localhost:3000"]
 ```
 
 
-## Running tests
+## 🔧 Technical Stack
 
-If you want to run it in docker, simply run:
+- **Backend**: FastAPI, SQLAlchemy, Redis, OpenAI API
+- **Frontend**: React, TypeScript, Chakra UI
+- **Database**: SQLite (dev) / PostgreSQL (prod)
+- **AI**: DeepSeek API for classification, DeepL for translation
+- **Deployment**: Docker, Docker Compose
 
-```bash
-docker-compose run --build --rm api pytest -vv .
-docker-compose down
-```
+## 🐛 Notes
 
-For running tests on your local machine.
+As for now, it's a one-user system, user is created on startup with .env login details. 
+
+Redis isn't implemented. 
 
 
-2. Run the pytest.
-```bash
-pytest -vv .
-```
+## 📄 License
+
+MIT License - Built with FastAPI, React, and AI technologies
