@@ -50,6 +50,8 @@ async def process_news(
     async with AsyncOpenAI(
         api_key=deepseek_api_key,
         timeout=15.0,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+
     ) as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description'][:500]}"
@@ -61,7 +63,7 @@ async def process_news(
             news_item = news
         try:
             response = await client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gemini-2.5-flash-lite",
                 messages=[
                     {
                         "role": "system",

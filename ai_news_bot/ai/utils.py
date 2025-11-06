@@ -108,10 +108,11 @@ async def translate_with_deepseek(
         async with AsyncOpenAI(
             api_key=deepseek_api_key,
             timeout=30.0,
-            max_retries=5
+            max_retries=5,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         ) as client:
             response = await client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gemini-2.5-flash-lite",
                 messages=[
                     {
                         "role": "system",
