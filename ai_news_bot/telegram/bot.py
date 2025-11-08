@@ -248,7 +248,6 @@ async def send_task_message(
     global bot_app
     if bot_app is None:
         raise RuntimeError("Bot not initialized")
-    cleared_text = clear_html_tags(text)
     irr_callback = {
         "action": "irr",
         "task_id": task_id,
@@ -275,7 +274,8 @@ async def send_task_message(
                 callback_data=translate_callback
             )
         )
-        cleared_text = await translate_with_deepseek(cleared_text)
+        text = await translate_with_deepseek(text)
+    cleared_text = clear_html_tags(text)
     reply_markup = InlineKeyboardMarkup(keyboard)
     disable_web_page_preview = True
     if "https://t.me" in news.link:
