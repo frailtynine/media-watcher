@@ -71,7 +71,9 @@ async def test_send_news_to_telegram(sample_news, dbsession: AsyncSession):
         with patch(
             'ai_news_bot.ai.news_consumer.queue_task_message'
         ) as mock_queue:
-            await send_news_to_telegram(sample_news, task_id=1)
+            news_rss_schema = RSSItemSchema.model_validate(sample_news)
+            print(news_rss_schema)
+            await send_news_to_telegram(news_rss_schema, task_id=1)
 
             # Verify queue_task_message was called for each chat_id
             assert mock_queue.call_count == 2
@@ -82,7 +84,7 @@ async def test_send_news_to_telegram(sample_news, dbsession: AsyncSession):
             assert "Test News Title" in call_args['text']
             assert "https://example.com/news/1" in call_args['text']
             assert call_args['task_id'] == "1"
-            assert call_args['news'] == sample_news
+            assert call_args['news'] == news_rss_schema
 
 
 @pytest.mark.anyio

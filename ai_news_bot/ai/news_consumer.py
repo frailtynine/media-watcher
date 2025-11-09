@@ -28,15 +28,17 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
         f"{news.description}\n\n"
         if news.description else ""
     )
-    text = f"[{news.title}]({news.link})\n{description_text}"
-    if news.link.startswith("https://t.me"):
-        text = f"{news.link}"
+    text = f"[{news.title}]({news.link})\n\n{description_text}"
     for chat_id in chat_ids:
         await queue_task_message(
             chat_id=chat_id,
             text=text,
             task_id=str(task_id),
-            news=news,
+            news=RSSItemSchema(
+                title=news.title,
+                description=news.description,
+                link=news.link,
+                pub_date=news.pub_date,),
         )
 
 
