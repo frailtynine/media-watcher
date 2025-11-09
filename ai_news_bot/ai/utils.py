@@ -1,9 +1,10 @@
 import httpx
 import logging
+from typing import Union
 from dateutil.parser import parse as parse_date
+from pydantic import BaseModel
 
 from newspaper import Article
-import deepl
 from openai import AsyncOpenAI
 from rss_parser import RSSParser
 
@@ -43,6 +44,11 @@ logger = logging.getLogger(__name__)
 #             )
 
 
+class TranslateResponseSchema(BaseModel):
+    title: str
+    description: str | None
+
+
 async def send_deepseek_balance_alert(
     zero_balance: bool = False, balance: float | None = None
 ):
@@ -76,70 +82,83 @@ def get_full_text(url: str) -> Article | None:
         return None
 
 
-def translate_article(
-    article: Article,
-    deepl_api_key: str
-) -> str | None:
-    """
-    Translate article text to English using Deepl API.
-    Use for long articles. For short texts use translate_with_deepseek.
+def prepare_translated_response(
+    response: TranslateResponseSchema | None,
+    origin_text: Union[RSSItemSchema, Article],
+) -> str:
+    """Prepare translated text from TranslateResponseSchema."""
+    link = (
+        origin_text.link if hasattr(origin_text, 'link')
+        else origin_text.url
+    )
+    if not response:
+        title_line = f"[{origin_text.title}]({link})\n\n"
+        if hasattr(origin_text, "description"):
+            body = origin_text.description
+        else:
+            body = origin_text.text
+        return (
+            f"{title_line}{body}\n\n"
+            "Перевод не случился, сорян."
+        )
+    translated_text = f"[{response.title}]({link})\n\n"
+    if response.description:
+        translated_text += f"{response.description}\n\n"
+    return translated_text
+
+
+async def translate_with_ai(
+    text: Union[RSSItemSchema | Article],
+) -> str:
+    """Translate text to Russian using AI API.
 
     Args:
-        article: Newspaper3k Article object with title and text.
+        text: RSSItemSchema or Newspaper3k Article object.
     """
-    deepl_client = deepl.DeepLClient(deepl_api_key)
-    full_text = f"{article.title}\n\n{article.text}"
-    response = deepl_client.translate_text(full_text, target_lang="RU")
-    return response.text if response else None
-
-
-async def translate_with_deepseek(
-    text: str,
-) -> str:
-    """Translate text to Russian using AI API."""
     async with get_standalone_session() as session:
         settings = await settings_crud.get_all_objects(session=session)
         if settings:
-            deepseek_api_key = settings[0].deepseek
+            api_key = settings[0].deepseek
         else:
             logger.warning("AI API key not found in settings.")
             return text
+    if type(text) is RSSItemSchema:
+        text_str = f"{text.title}\n\n{text.description}"
+    else:
+        text_str = f"{text.title}\n\n{text.text}"
     try:
         async with AsyncOpenAI(
-            api_key=deepseek_api_key,
-            timeout=30.0,
+            api_key=api_key,
+            timeout=120.0,
             max_retries=5,
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         ) as client:
-            response = await client.chat.completions.create(
+            response = await client.beta.chat.completions.parse(
                 model="gemini-2.5-flash-lite",
                 messages=[
                     {
                         "role": "system",
                         "content": (
-                            "You are a helpful assistant that translates"
-                            "markdown text to Russian. Return only "
-                            "the translated text, preserve links."
+                            "Translate to Russian and extract translated text."
                         ),
                     },
                     {
                         "role": "user",
                         "content": (
-                            f"Translate the following text to Russian: {text}"
+                            f"Translate the following text to Russian: \n\n"
+                            f"{text_str}"
                         ),
                     },
                 ],
+                response_format=TranslateResponseSchema
             )
-            if response.choices and response.choices[0].message.content:
-                return response.choices[0].message.content.strip()
-            else:
-                logger.error(
-                    "DeepSeek translation failed or returned empty content."
-                )
-                return text
+            return prepare_translated_response(
+                response=response.choices[0].message.parsed,
+                origin_text=text,
+            )
     except Exception as e:
-        logger.error(f"DeepSeek translation error: {e}")
-        return text
+        logger.error(f"AI translation error: {e}")
+        return prepare_translated_response(response=None, origin_text=text)
 
 
 def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:

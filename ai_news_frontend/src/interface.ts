@@ -107,12 +107,10 @@ export interface Prompt {
 
 export interface Settings {
   deepseek: string | null;
-  deepl: string | null;
   rss_urls: Record<string, string>;
   tg_urls: Record<string, string>;
 }
 
  export interface ApiSettings {
   deepseek: string | null;
-  deepl: string | null;
  }

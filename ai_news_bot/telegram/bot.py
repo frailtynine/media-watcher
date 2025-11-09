@@ -6,6 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, ContextTypes
 )
+from telegram.helpers import escape_markdown
 from langdetect import detect
 
 from ai_news_bot.db.crud.telegram import telegram_user_crud
@@ -17,8 +18,7 @@ from ai_news_bot.telegram.schemas import TelegramUser
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.ai.utils import (
     get_full_text,
-    translate_article,
-    translate_with_deepseek
+    translate_with_ai
 )
 from ai_news_bot.telegram.utils import chunk_message, clear_html_tags
 
@@ -101,7 +101,7 @@ async def handle_callback_query(
             if "news" in callback_data:
                 article = get_full_text(callback_data["news"].link)
                 if article:
-                    translated_text = translate_article(article, deepl_api_key)
+                    translated_text = await translate_with_ai(article)
                     if len(translated_text) > 4000:
                         chunks = chunk_message(translated_text)
                         for chunk in chunks:
@@ -189,7 +189,7 @@ async def process_task_message_queue() -> None:
             if message_data["task_id"]:
                 await send_task_message(
                     chat_id=message_data["chat_id"],
-                    text=message_data["text"],
+                    text=escape_markdown(message_data["text"], 2),
                     task_id=message_data["task_id"],
                     news=message_data["news"],
                 )
@@ -274,11 +274,12 @@ async def send_task_message(
                 callback_data=translate_callback
             )
         )
-        text = await translate_with_deepseek(text)
+        text = await translate_with_ai(news)
     cleared_text = clear_html_tags(text)
     reply_markup = InlineKeyboardMarkup(keyboard)
     disable_web_page_preview = True
     if "https://t.me" in news.link:
+        cleared_text = news.link
         disable_web_page_preview = False
     await asyncio.wait_for(
         bot_app.bot.send_message(

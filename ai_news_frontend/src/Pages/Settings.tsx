@@ -62,7 +62,6 @@ export default function Settings() {
   const handleSaveSettings = async (formData: SettingsFormData) => {
     const data = {
       deepseek: formData.deepseek,
-      deepl: formData.deepl,
     }
     const updatedSettings = await settingsAPI.updateSettings(data);
     reset({
@@ -214,19 +213,14 @@ export default function Settings() {
       </Box>
 
       <Box p={6} borderWidth={1} borderRadius="lg" bg="white" shadow="sm">
-        <Text mb={6} fontWeight="semibold" fontSize="lg" color="gray.800">API Keys</Text>
+        <Text mb={6} fontWeight="semibold" fontSize="lg" color="gray.800">Gemini API key:</Text>
         <Box display="flex" flexDirection="column" gap={4}>
           <Box>
-            <Text mb={2} fontWeight="medium" color="gray.700">AI API Key</Text>
             <Input {...register("deepseek")} type="password" maxW="300px" />
-          </Box>
-          <Box>
-            <Text mb={2} fontWeight="medium" color="gray.700">Deepl API Key</Text>
-            <Input {...register("deepl")} type="password" maxW="300px" />
           </Box>
           <Box mt={4}>
             <Button onClick={handleSubmit(handleSaveSettings)} colorScheme="green">
-              Save keys
+              Save key
             </Button>
           </Box>
         </Box>

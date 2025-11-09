@@ -36,7 +36,6 @@ async def test_get_settings_creates_default_when_none_exist(
     assert response.status_code == 200
     data = response.json()
     assert "deepseek" in data
-    assert "deepl" in data
     assert "rss_urls" in data
     assert "tg_urls" in data
     assert isinstance(data["rss_urls"], dict)
@@ -56,7 +55,6 @@ async def test_get_settings_returns_existing_settings(
         session=dbsession,
         obj_in=SettingsSchema(
             deepseek="test-deepseek-key",
-            deepl="test-deepl-key",
             rss_urls={"bbc": "https://feeds.bbci.co.uk/news/rss.xml"},
             tg_urls={"test_channel": "https://t.me/test"},
         )
@@ -71,7 +69,6 @@ async def test_get_settings_returns_existing_settings(
     assert response.status_code == 200
     data = response.json()
     assert data["deepseek"] == "test-deepseek-key"
-    assert data["deepl"] == "test-deepl-key"
     assert data["rss_urls"] == {"bbc": "https://feeds.bbci.co.uk/news/rss.xml"}
     assert data["tg_urls"] == {"test_channel": "https://t.me/test"}
 
@@ -107,7 +104,6 @@ async def test_update_settings_creates_new_when_none_exist(
     url = fastapi_app.url_path_for("update_settings")
     payload = ApiSettingsSchema(
         deepseek="new-deepseek-key",
-        deepl="new-deepl-key",
     )
 
     response = await client.put(
@@ -119,7 +115,6 @@ async def test_update_settings_creates_new_when_none_exist(
     assert response.status_code == 200
     data = response.json()
     assert data["deepseek"] == "new-deepseek-key"
-    assert data["deepl"] == "new-deepl-key"
 
 
 @pytest.mark.anyio
@@ -135,14 +130,12 @@ async def test_update_settings_updates_existing_settings(
         session=dbsession,
         obj_in=ApiSettingsSchema(
             deepseek="old-deepseek-key",
-            deepl="old-deepl-key",
         )
     )
 
     url = fastapi_app.url_path_for("update_settings")
     payload = ApiSettingsSchema(
         deepseek="updated-deepseek-key",
-        deepl="updated-deepl-key",
     )
 
     response = await client.put(
@@ -154,14 +147,12 @@ async def test_update_settings_updates_existing_settings(
     assert response.status_code == 200
     data = response.json()
     assert data["deepseek"] == "updated-deepseek-key"
-    assert data["deepl"] == "updated-deepl-key"
 
     # Verify the settings were actually updated in the database
     updated_settings = await settings_crud.get_object_by_id(
         session=dbsession, obj_id=initial_settings.id
     )
     assert updated_settings.deepseek == "updated-deepseek-key"
-    assert updated_settings.deepl == "updated-deepl-key"
 
 
 @pytest.mark.anyio
@@ -175,7 +166,6 @@ async def test_update_settings_with_null_keys(
     url = fastapi_app.url_path_for("update_settings")
     payload = ApiSettingsSchema(
         deepseek=None,
-        deepl=None,
     )
 
     response = await client.put(
@@ -187,7 +177,6 @@ async def test_update_settings_with_null_keys(
     assert response.status_code == 200
     data = response.json()
     assert data["deepseek"] is None
-    assert data["deepl"] is None
 
 
 @pytest.mark.anyio
@@ -199,7 +188,6 @@ async def test_update_settings_requires_authentication(
     url = fastapi_app.url_path_for("update_settings")
     payload = ApiSettingsSchema(
         deepseek="test",
-        deepl="test",
     )
 
     response = await client.put(
@@ -224,7 +212,6 @@ async def test_add_source_rss_success(
         session=dbsession,
         obj_in=SettingsSchema(
             deepseek=None,
-            deepl=None,
             rss_urls={},
             tg_urls={},
         )
@@ -268,7 +255,6 @@ async def test_add_source_telegram_success(
         session=dbsession,
         obj_in=SettingsSchema(
             deepseek=None,
-            deepl=None,
             rss_urls={},
             tg_urls={},
         )
