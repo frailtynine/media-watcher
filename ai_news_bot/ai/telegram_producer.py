@@ -18,7 +18,12 @@ RSS_HUB_HOSTS = [
     "rss.owo.nz",
     "rsshub.ktachibana.party",
     "rsshub.isrss.com",
-    "rsshub.asailor.org"
+    "rsshub.asailor.org",
+    "rsshub.rssforever.com",
+    "hub.slarker.me",
+    "rsshub.pseudoyu.com",
+    "rsshub.ktachibana.party",
+    "rsshub.asailor.org",
 ]
 
 
@@ -30,6 +35,12 @@ async def fetch_rss_feed(channel_url: str) -> httpx.Response | None:
             response = await client.get(url)
             if response.status_code == 200:
                 return response
+            else:
+                logger.warning(
+                    f"Failed to fetch RSS from {host}" 
+                    f" for channel: {channel_url} "
+                    f"Status code: {response.status_code}"
+                )
         logger.error(f"All RSSHub hosts failed for channel: {channel_url}")
 
 
