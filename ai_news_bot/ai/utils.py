@@ -172,10 +172,10 @@ def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:
         try:
             feed = RSSParser.parse(response.text)
         except Exception as e:
-            logger.warning(f"Failed to parse RSS feed: {e}")
+            logger.warning(f"Failed to parse RSS feed: {e}, {response.url}")
     else:
         logger.warning(
-            f"Bad response status: {response.status_code}"
+            f"Bad response status: {response.status_code}, {response.url}"
         )
     messages = [
         RSSItemSchema(
