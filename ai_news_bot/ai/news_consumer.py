@@ -29,8 +29,7 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
         f"{news.description}\n\n"
         if news.description else ""
     )
-    cleared_description = escape_markdown(description_text, version=2)
-    text = f"[{news.title}]({news.link})\n\n{cleared_description}"
+    text = f"[{news.title}]({news.link})\n\n{description_text}"
     for chat_id in chat_ids:
         await queue_task_message(
             chat_id=chat_id,
