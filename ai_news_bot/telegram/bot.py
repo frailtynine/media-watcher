@@ -6,7 +6,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application, CallbackQueryHandler, CommandHandler, ContextTypes
 )
-from telegram.helpers import escape_markdown
 from langdetect import detect
 
 from ai_news_bot.db.crud.telegram import telegram_user_crud
@@ -189,7 +188,7 @@ async def process_task_message_queue() -> None:
             if message_data["task_id"]:
                 await send_task_message(
                     chat_id=message_data["chat_id"],
-                    text=escape_markdown(message_data["text"], 2),
+                    text=message_data["text"],
                     task_id=message_data["task_id"],
                     news=message_data["news"],
                 )

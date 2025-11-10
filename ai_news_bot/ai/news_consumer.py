@@ -2,6 +2,7 @@ import logging
 from typing import TYPE_CHECKING, Union
 
 from openai import AsyncOpenAI
+from telegram.helpers import escape_markdown
 
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.news_task import news_task_crud
@@ -28,7 +29,8 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
         f"{news.description}\n\n"
         if news.description else ""
     )
-    text = f"[{news.title}]({news.link})\n\n{description_text}"
+    cleared_description = escape_markdown(description_text, version=2)
+    text = f"[{news.title}]({news.link})\n\n{cleared_description}"
     for chat_id in chat_ids:
         await queue_task_message(
             chat_id=chat_id,
