@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from ai_news_bot.web.api.settings.validators import (
-    validate_telegram_channel_url
+    validate_telegram_channel_url,
+    normalize_telegram_url
 )
 
 
@@ -45,3 +46,52 @@ async def test_validate_telegram_channel_url():
         # The validator will normalize the URL by prepending https://t.me/
         expected_url = "https://t.me/https://example.com/some_channel"
         mock_fetch.assert_called_with(expected_url)
+
+
+def test_normalize_telegram_url():
+    """Test normalize_telegram_url function with various input formats."""
+
+    # Test already normalized URL (should remain unchanged)
+    assert normalize_telegram_url("https://t.me/channel") == \
+        "https://t.me/channel"
+    assert normalize_telegram_url("https://t.me/example_channel") == \
+        "https://t.me/example_channel"
+
+    # Test t.me/ prefix removal
+    assert normalize_telegram_url("t.me/channel") == "https://t.me/channel"
+    assert normalize_telegram_url("t.me/example_channel") == \
+        "https://t.me/example_channel"
+
+    # Test @ prefix removal
+    assert normalize_telegram_url("@channel") == "https://t.me/channel"
+    assert normalize_telegram_url("@example_channel") == \
+        "https://t.me/example_channel"
+
+    # Test plain channel name
+    assert normalize_telegram_url("channel") == "https://t.me/channel"
+    assert normalize_telegram_url("example_channel") == \
+        "https://t.me/example_channel"
+
+    # Test leading slash removal
+    assert normalize_telegram_url("/channel") == "https://t.me/channel"
+    assert normalize_telegram_url("//channel") == "https://t.me/channel"
+
+    # Test edge cases that were problematic with lstrip()
+    assert normalize_telegram_url("entertainment") == \
+        "https://t.me/entertainment"
+    assert normalize_telegram_url("@entertainment") == \
+        "https://t.me/entertainment"
+    assert normalize_telegram_url("t.me/entertainment") == \
+        "https://t.me/entertainment"
+    assert normalize_telegram_url("example_news") == \
+        "https://t.me/example_news"
+
+    # Test mixed cases
+    assert normalize_telegram_url("t.me/@channel") == \
+        "https://t.me/@channel"
+    assert normalize_telegram_url("@/channel") == "https://t.me/channel"
+
+    # Test with trailing slashes
+    assert normalize_telegram_url("t.me/channel/") == \
+        "https://t.me/channel/"
+    assert normalize_telegram_url("@channel/") == "https://t.me/channel/"
