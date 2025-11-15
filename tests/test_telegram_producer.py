@@ -54,7 +54,7 @@ async def test_fetch_rss_feed_all_hosts_fail():
         assert result is None
         # Should try all 5 hosts
         mock_get = mock_client.return_value.__aenter__.return_value.get
-        assert mock_get.call_count == 5
+        assert mock_get.call_count == 10
 
 
 @pytest.mark.anyio

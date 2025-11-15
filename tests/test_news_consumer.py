@@ -92,15 +92,15 @@ async def test_process_news_relevant(
     sample_news, sample_news_task, sample_prompt
 ):
     """Test processing news that is relevant."""
-    # Mock the OpenAI response
+    # Mock the Google Generative AI response
     mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "true"
+    mock_response.text = "true"
+    mock_response.usage_metadata = {"total_tokens": 100}
 
-    with patch('ai_news_bot.ai.news_consumer.AsyncOpenAI') as mock_openai:
+    with patch('ai_news_bot.ai.news_consumer.GeminiClient') as mock_gemini:
         mock_client = AsyncMock()
-        mock_client.chat.completions.create.return_value = mock_response
-        mock_openai.return_value.__aenter__.return_value = mock_client
+        mock_client.models.generate_content.return_value = mock_response
+        mock_gemini.return_value.aio.__aenter__.return_value = mock_client
 
         result = await process_news(
             news=sample_news,
@@ -111,8 +111,8 @@ async def test_process_news_relevant(
 
         assert result is True
 
-        # Verify OpenAI was called
-        mock_client.chat.completions.create.assert_called_once()
+        # Verify Gemini was called
+        mock_client.models.generate_content.assert_called_once()
 
 
 @pytest.mark.anyio
@@ -120,15 +120,15 @@ async def test_process_news_not_relevant(
     sample_news, sample_news_task, sample_prompt
 ):
     """Test processing news that is not relevant."""
-    # Mock the OpenAI response
+    # Mock the Google Generative AI response
     mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "false"
+    mock_response.text = "false"
+    mock_response.usage_metadata = {"total_tokens": 85}
 
-    with patch('ai_news_bot.ai.news_consumer.AsyncOpenAI') as mock_openai:
+    with patch('ai_news_bot.ai.news_consumer.GeminiClient') as mock_gemini:
         mock_client = AsyncMock()
-        mock_client.chat.completions.create.return_value = mock_response
-        mock_openai.return_value.__aenter__.return_value = mock_client
+        mock_client.models.generate_content.return_value = mock_response
+        mock_gemini.return_value.aio.__aenter__.return_value = mock_client
 
         result = await process_news(
             news=sample_news,
@@ -156,11 +156,11 @@ async def test_add_positive_news(
                     news_id=sample_news.id,
                     news_task_id=sample_news_task.id,
                 )
-         
+
                 # Verify add_positive was called
                 mock_add_positive.assert_called_once()
                 call_args = mock_add_positive.call_args[1]
-     
+
                 # Check the RSSItemSchema was created correctly
                 rss_item = call_args['news']
                 assert isinstance(rss_item, RSSItemSchema)
@@ -189,7 +189,7 @@ async def test_news_consumer_with_relevant_news(
     """Test news consumer with unprocessed news and active tasks."""
     unprocessed_news = [sample_news]
     active_tasks = [sample_news_task]
-    
+
     with patch.object(
         crud_news, 'get_unprocessed_news', return_value=unprocessed_news
     ):
@@ -209,7 +209,7 @@ async def test_news_consumer_with_relevant_news(
                         with patch.object(
                             crud_news, 'mark_news_as_processed'
                         ) as mock_mark_processed:
-            
+
                             await news_consumer()
 
                             # Verify process_news was called
@@ -249,7 +249,7 @@ async def test_news_consumer_with_not_relevant_news(
                         with patch.object(
                             crud_news, 'mark_news_as_processed'
                         ) as mock_mark_processed:
-                            await news_consumer()  
+                            await news_consumer()
                             # Verify process_news was called
                             mock_process.assert_called_once()
                             # Verify add_positive_news was NOT called
