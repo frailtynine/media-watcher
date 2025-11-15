@@ -1,8 +1,9 @@
 import logging
 from typing import TYPE_CHECKING, Union
 
-from openai import AsyncOpenAI
-from telegram.helpers import escape_markdown
+from google.genai import Client as GeminiClient
+from google.genai import types as genai_types
+
 
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.db.crud.news_task import news_task_crud
@@ -12,6 +13,7 @@ from ai_news_bot.db.crud.telegram import telegram_user_crud
 from ai_news_bot.db.crud.settings import settings_crud
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.telegram.bot import queue_task_message
+from ai_news_bot.telegram.utils import clear_html_tags
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
@@ -50,57 +52,45 @@ async def process_news(
     initial_prompt: str,
     deepseek_api_key: str
 ) -> bool:
-    async with AsyncOpenAI(
+    async with GeminiClient(
         api_key=deepseek_api_key,
-        timeout=15.0,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-
-    ) as client:
+    ).aio as client:
         false_positives = "\n".join(
             f"- {item['title']} \n\n {item['description'][:500]}"
             for item in news_task.false_positives[-20:]
         )
         if type(news) is not str:
-            news_item = f"{news.title} \n {news.description}."
+            news_item = f"{news.title} \n {clear_html_tags(news.description)}."
         else:
             news_item = news
         try:
-            response = await client.chat.completions.create(
+            response = await client.models.generate_content(
                 model="gemini-2.5-flash-lite",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            f"{initial_prompt} \n\n"
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"News: {news_item} \n\n"
-                            f"Filter: {news_task.title} \n\n"
-                            f" {news_task.description}\n\n"
-                            "Use the list of irrelevant items to "
-                            "better understand what is not relevant: \n\n"
-                            f"{false_positives}"
-                        ),
-                    },
-                ],
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=(
+                        f"{initial_prompt} \n\n"
+                        f"Filter: {news_task.title} \n\n"
+                        "Use the list of irrelevant items to "
+                        "better understand what is not relevant: \n\n"
+                        f"{false_positives}"
+                    )
+                ),
+                contents=(f"News: {news_item[:300]} \n\n")
             )
             if (
-                response.choices[0].message.content
-                and response.choices[0].message.content.lower() == "true"
+                response.text.lower() == "true"
             ):
+                logger.info(f"Token count for news{response.usage_metadata}")
                 return True
             elif (
-                response.choices[0].message.content
-                and response.choices[0].message.content.lower() == "false"
+                response.text.lower() == "false"
             ):
+                logger.info(f"Token count for news{response.usage_metadata}")
                 return False
             else:
                 logger.warning(
                     f"Unexpected response from AI: "
-                    f"{response.choices[0].message.content}",
+                    f"{response}",
                 )
                 return False
         except Exception as e:
