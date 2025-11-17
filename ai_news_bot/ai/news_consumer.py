@@ -69,18 +69,22 @@ async def process_news(
                 config=genai_types.GenerateContentConfig(
                     system_instruction=(
                         f"{initial_prompt} \n\n"
-                        f"Filter: {news_task.title} \n\n"
+                        f"Filter: {news_task.title} \n"
+                        f"{news_task.description} \n\n"
                         "Use the list of irrelevant items to "
                         "better understand what is not relevant: \n\n"
                         f"{false_positives}"
-                    )
+                    ),
                 ),
-                contents=(f"News: {news_item[:300]} \n\n")
+                contents=(f"News: {news_item} \n\n")
             )
+            for part in response.candidates[0].content.parts:
+                if part.thought:
+                    logger.info(f"AI Thought: {part.text}")
             if (
                 response.text.lower() == "true"
             ):
-                logger.info(f"Token count for news{response.usage_metadata}")
+                logger.info(f"Token count for news{response.usage_metadata}. ")
                 return True
             elif (
                 response.text.lower() == "false"
