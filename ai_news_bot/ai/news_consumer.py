@@ -55,28 +55,32 @@ async def process_news(
     async with GeminiClient(
         api_key=deepseek_api_key,
     ).aio as client:
-        false_positives = "\n".join(
-            f"- {item['title']} \n\n {item['description'][:500]}"
-            for item in news_task.false_positives[-20:]
-        )
+        # false_positives = "\n".join(
+        #     f"- {item['title']} \n\n {clear_html_tags(item['description'])[:300]}"
+        #     for item in news_task.false_positives[-20:]
+        # )
         if type(news) is not str:
             news_item = f"{news.title} \n {clear_html_tags(news.description)}."
         else:
             news_item = news
         try:
+            system_instruction = (
+                f"{initial_prompt} \n\n"
+                f"Filter: {news_task.title} \n"
+                f"{news_task.description} \n\n"
+                # "Use the list of irrelevant items to "
+                # "better understand what is not relevant: \n\n"
+                # f"{false_positives}"
+            )
             response = await client.models.generate_content(
                 model="gemini-2.5-flash-lite",
                 config=genai_types.GenerateContentConfig(
-                    system_instruction=(
-                        f"{initial_prompt} \n\n"
-                        f"Filter: {news_task.title} \n"
-                        f"{news_task.description} \n\n"
-                        "Use the list of irrelevant items to "
-                        "better understand what is not relevant: \n\n"
-                        f"{false_positives}"
-                    ),
+                    system_instruction=system_instruction,
                 ),
                 contents=(f"News: {news_item} \n\n")
+            )
+            logger.info(
+                f"Token count for {news_item[:50]}: {response.usage_metadata}."
             )
             for part in response.candidates[0].content.parts:
                 if part.thought:
@@ -84,12 +88,10 @@ async def process_news(
             if (
                 response.text.lower() == "true"
             ):
-                logger.info(f"Token count for news{response.usage_metadata}. ")
                 return True
             elif (
                 response.text.lower() == "false"
             ):
-                logger.info(f"Token count for news{response.usage_metadata}")
                 return False
             else:
                 logger.warning(
