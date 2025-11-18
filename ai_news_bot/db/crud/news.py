@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import select, false
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,10 +9,12 @@ from ai_news_bot.db.models.news import News
 
 class CRUDNews(BaseCRUD):
     async def get_unprocessed_news(self, session: AsyncSession) -> list[News]:
+        one_day_ago = datetime.now() - timedelta(days=1)
         stmt = select(
             self.model
         ).where(
-            self.model.processed == false()
+            self.model.processed == false(),
+            self.model.pub_date >= one_day_ago
         )
         result = await session.execute(stmt)
         return result.scalars().all()
