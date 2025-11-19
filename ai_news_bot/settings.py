@@ -5,6 +5,7 @@ from tempfile import gettempdir
 from typing import Optional
 import logging
 import logging.config
+import logging_loki
 
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,11 +25,15 @@ class LogLevel(str, enum.Enum):
     FATAL = "FATAL"
 
 
-def setup_logging(log_level: LogLevel = LogLevel.INFO) -> None:
+def setup_logging(log_level: LogLevel = LogLevel.INFO, loki_url: Optional[str] = None, 
+                  loki_user: Optional[str] = None, loki_api_key: Optional[str] = None) -> None:
     """
     Setup logging configuration.
 
     :param log_level: The log level to use.
+    :param loki_url: Optional Loki URL for remote logging.
+    :param loki_user: Optional Loki user ID.
+    :param loki_api_key: Optional Loki API key.
     """
     logging_config = {
         "version": 1,
@@ -95,6 +100,26 @@ def setup_logging(log_level: LogLevel = LogLevel.INFO) -> None:
 
     logging.config.dictConfig(logging_config)
 
+    # Add Loki handler if credentials are provided
+    if loki_url and loki_user and loki_api_key:
+        try:
+            loki_handler = logging_loki.LokiHandler(
+                url=f"{loki_url}/loki/api/v1/push",
+                tags={"application": "verstka-media-watcher"},
+                auth=(loki_user, loki_api_key),
+                version="2",
+            )
+            loki_handler.setLevel(log_level.value)
+
+            # Add to ai_news_bot logger
+            ai_logger = logging.getLogger("ai_news_bot")
+            ai_logger.addHandler(loki_handler)
+        except Exception as e:
+            # Don't fail startup if Loki is unavailable
+            logging.getLogger("ai_news_bot").warning(
+                f"Failed to setup Loki handler: {e}"
+            )
+
 
 def get_logger(name: str = "ai_news_bot") -> logging.Logger:
     """
@@ -103,7 +128,8 @@ def get_logger(name: str = "ai_news_bot") -> logging.Logger:
     :param name: The name of the logger.
     :return: Logger instance.
     """
-    return logging.getLogger(name)
+    logger = logging.getLogger(name)
+    return logger
 
 
 class Settings(BaseSettings):
@@ -138,11 +164,14 @@ class Settings(BaseSettings):
     redis_pass: Optional[str] = None
     redis_base: Optional[int] = None
     # For testing purposes.
-    # TODO: in prod create a model for tokens
     tg_bot_test_token: Optional[str] = None
     tg_bot_token: Optional[str] = None
     admin_email: Optional[str] = None
     admin_password: Optional[str] = None
+    loki_api_key: Optional[str] = None
+    loki_name: Optional[str] = None
+    loki_url: Optional[str] = None
+    loki_user: Optional[str] = None
 
     @property
     def db_url(self) -> URL:
@@ -180,7 +209,12 @@ class Settings(BaseSettings):
 
     def setup_logging(self) -> None:
         """Setup logging with the current log level."""
-        setup_logging(self.log_level)
+        setup_logging(
+            self.log_level,
+            self.loki_url,
+            self.loki_user,
+            self.loki_api_key,
+        )
 
 
 settings = Settings()

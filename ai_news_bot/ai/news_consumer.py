@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from ai_news_bot.db.models.news_task import NewsTask
     from ai_news_bot.db.models.news import News
 
+
 logger = logging.getLogger(__name__)
 
 

@@ -3006,6 +3006,22 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-logging-loki-v2"
+version = "0.4.4"
+description = "Python logging handler for Grafana Loki, with support to headers."
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "python_logging_loki_v2-0.4.4-py3-none-any.whl", hash = "sha256:94cd67ce26040e7831174331eb2a9a75694aa7432393cd5eb842038dde14682e"},
+    {file = "python_logging_loki_v2-0.4.4.tar.gz", hash = "sha256:8521301fcbb89a8c261415e51f278d9d68bc719709b76974dbb4070bddaa59b6"},
+]
+
+[package.dependencies]
+requests = "*"
+rfc3339 = ">=6.1"
+
+[[package]]
 name = "python-multipart"
 version = "0.0.20"
 description = "A streaming multipart parser for Python"
@@ -3300,6 +3316,18 @@ files = [
 
 [package.dependencies]
 requests = ">=1.0.0"
+
+[[package]]
+name = "rfc3339"
+version = "6.2"
+description = "Format dates according to the RFC 3339."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "rfc3339-6.2-py3-none-any.whl", hash = "sha256:f44316b21b21db90a625cde04ebb0d46268f153e6093021fa5893e92a96f58a3"},
+    {file = "rfc3339-6.2.tar.gz", hash = "sha256:d53c3b5eefaef892b7240ba2a91fef012e86faa4d0a0ca782359c490e00ad4d0"},
+]
 
 [[package]]
 name = "rsa"
@@ -4197,4 +4225,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">3.10.1,<4"
-content-hash = "b836b5a5c50410b262a66b89f3704661db2d653a8ceb9cbe62033ba1e7b15c01"
+content-hash = "4d9ae8dbe530fd1e9379469cf809b6d46692fc1b7054834abca6b5932976ccdb"

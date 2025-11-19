@@ -85,6 +85,11 @@ MEDIA_WATCHER_DB_FILE=./media_watcher.db
 MEDIA_WATCHER_REDIS_HOST=localhost
 MEDIA_WATCHER_REDIS_PORT=6379
 
+# Logging (Optional - Grafana Cloud)
+MEDIA_WATCHER_LOKI_URL=https://logs-prod-XXX.grafana.net
+MEDIA_WATCHER_LOKI_USER=123456
+MEDIA_WATCHER_LOKI_API_KEY=glc_xxxxxxxxxxxxx
+
 # Application  
 MEDIA_WATCHER_HOST=0.0.0.0
 MEDIA_WATCHER_PORT=8050
@@ -98,6 +103,7 @@ MEDIA_WATCHER_CORS_ORIGINS=["http://localhost:3000"]
 - **Frontend**: React, TypeScript, Chakra UI
 - **Database**: SQLite (dev) / PostgreSQL (prod)
 - **AI**: DeepSeek API for classification, DeepL for translation
+- **Logging**: Grafana Cloud Loki (optional, for centralized log management)
 - **Deployment**: Docker, Docker Compose
 
 ## 🐛 Notes

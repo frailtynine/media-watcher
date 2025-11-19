@@ -1,6 +1,6 @@
+import logging
 import asyncio
 import httpx
-import logging
 
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.ai.utils import (
@@ -9,9 +9,7 @@ from ai_news_bot.ai.utils import (
     add_news_to_db
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 RSS_HUB_HOSTS = [
     "rsshub.umzzz.com",
@@ -37,7 +35,7 @@ async def fetch_rss_feed(channel_url: str) -> httpx.Response | None:
                 return response
             else:
                 logger.warning(
-                    f"Failed to fetch RSS from {host}" 
+                    f"Failed to fetch RSS from {host}"
                     f" for channel: {channel_url} "
                     f"Status code: {response.status_code}"
                 )
