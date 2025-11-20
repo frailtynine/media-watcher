@@ -56,10 +56,6 @@ async def process_news(
     async with GeminiClient(
         api_key=deepseek_api_key,
     ).aio as client:
-        # false_positives = "\n".join(
-        #     f"- {item['title']} \n\n {clear_html_tags(item['description'])[:300]}"
-        #     for item in news_task.false_positives[-20:]
-        # )
         if type(news) is not str:
             news_item = f"{news.title} \n {clear_html_tags(news.description)}."
         else:
@@ -69,9 +65,6 @@ async def process_news(
                 f"{initial_prompt} \n\n"
                 f"Filter: {news_task.title} \n"
                 f"{news_task.description} \n\n"
-                # "Use the list of irrelevant items to "
-                # "better understand what is not relevant: \n\n"
-                # f"{false_positives}"
             )
             response = await client.models.generate_content(
                 model="gemini-2.5-flash-lite",

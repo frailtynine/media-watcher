@@ -25,8 +25,12 @@ class LogLevel(str, enum.Enum):
     FATAL = "FATAL"
 
 
-def setup_logging(log_level: LogLevel = LogLevel.INFO, loki_url: Optional[str] = None, 
-                  loki_user: Optional[str] = None, loki_api_key: Optional[str] = None) -> None:
+def setup_logging(
+    log_level: LogLevel = LogLevel.INFO,
+    loki_url: Optional[str] = None,
+    loki_user: Optional[str] = None,
+    loki_api_key: Optional[str] = None
+) -> None:
     """
     Setup logging configuration.
 
@@ -172,6 +176,9 @@ class Settings(BaseSettings):
     loki_name: Optional[str] = None
     loki_url: Optional[str] = None
     loki_user: Optional[str] = None
+    tg_session_string: Optional[str] = None
+    tg_api_id: Optional[int] = None
+    tg_api_hash: Optional[str] = None
 
     @property
     def db_url(self) -> URL:
