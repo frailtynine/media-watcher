@@ -39,6 +39,7 @@ langdetect = "^1.0.9"
 bs4 = "^0.0.2"
 google-genai = "^1.50.1"
 python-logging-loki-v2 = "^0.4.4"
+telethon = "^1.42.0"
 
 
 [tool.poetry.group.dev.dependencies]

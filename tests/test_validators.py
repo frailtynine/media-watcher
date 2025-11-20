@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from ai_news_bot.web.api.settings.validators import (
     validate_telegram_channel_url,
@@ -9,43 +9,54 @@ from ai_news_bot.web.api.settings.validators import (
 
 @pytest.mark.anyio
 async def test_validate_telegram_channel_url():
-    """Test validate_telegram_channel_url with mocked fetch_rss_feed."""
+    """Test validate_telegram_channel_url with mocked Telethon client."""
     valid_url = "https://t.me/astrapress"
     valid_url_alt = "t.me/astrapress/"
-    invalid_url = "https://example.com/some_channel"
 
-    # Mock successful RSS feed response
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.text = "<?xml version='1.0'?><rss>test content</rss>"
+    from ai_news_bot.web.api.news_task.schema import RSSItemSchema
+    from datetime import datetime, timezone
+
+    # Mock successful message fetching
+    mock_messages = [
+        RSSItemSchema(
+            title="Test message",
+            description="Test description",
+            link="https://t.me/astrapress/1",
+            pub_date=datetime.now(timezone.utc),
+        )
+    ]
 
     with patch(
-        "ai_news_bot.web.api.settings.validators.fetch_rss_feed"
-    ) as mock_fetch:
-        # Test valid Telegram URL - should return mock response
-        mock_fetch.return_value = mock_response
+        "ai_news_bot.web.api.settings.validators."
+        "get_messages_from_telegram_channel"
+    ) as mock_get_messages:
+        # Test valid Telegram URL - should return messages
+        mock_get_messages.return_value = mock_messages
         is_valid, result_url = await validate_telegram_channel_url(valid_url)
         assert is_valid is True
         assert result_url == valid_url
-        mock_fetch.assert_called_with(valid_url)
+        mock_get_messages.assert_called_with(valid_url, 1)
 
-        # Test alternative valid format - should normalize and return response
-        mock_fetch.return_value = mock_response
+        # Test alternative valid format - should normalize and validate
+        mock_get_messages.return_value = mock_messages
         is_valid, result_url = await validate_telegram_channel_url(
             valid_url_alt
         )
         assert is_valid is True
         assert result_url == "https://t.me/astrapress/"
-        mock_fetch.assert_called_with("https://t.me/astrapress/")
+        mock_get_messages.assert_called_with("https://t.me/astrapress/", 1)
 
-        # Test invalid URL - should return None (no RSS feed available)
-        mock_fetch.return_value = None
-        is_valid, error_msg = await validate_telegram_channel_url(invalid_url)
+        # Test channel returns no messages
+        mock_get_messages.return_value = []
+        is_valid, error_msg = await validate_telegram_channel_url(valid_url)
         assert is_valid is False
         assert "недоступен" in error_msg
-        # The validator will normalize the URL by prepending https://t.me/
-        expected_url = "https://t.me/https://example.com/some_channel"
-        mock_fetch.assert_called_with(expected_url)
+
+        # Test exception handling
+        mock_get_messages.side_effect = Exception("Connection error")
+        is_valid, error_msg = await validate_telegram_channel_url(valid_url)
+        assert is_valid is False
+        assert "Что-то не такя" in error_msg
 
 
 def test_normalize_telegram_url():

@@ -1,15 +1,20 @@
+from dataclasses import dataclass
 import logging
 import asyncio
-import httpx
+
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from telethon.tl.custom.message import Message
 
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.ai.utils import (
-    parse_rss_feed,
     get_sources,
-    add_news_to_db
+    add_news_to_db,
 )
+from ai_news_bot.settings import settings
 
 logger = logging.getLogger(__name__)
+
 
 RSS_HUB_HOSTS = [
     "rsshub.umzzz.com",
@@ -25,57 +30,84 @@ RSS_HUB_HOSTS = [
 ]
 
 
-async def fetch_rss_feed(channel_url: str) -> httpx.Response | None:
-    channel_name = channel_url.replace("https://t.me/", "").rstrip("/")
-    async with httpx.AsyncClient() as client:
-        for host in RSS_HUB_HOSTS:
-            url = f"https://{host}/telegram/channel/{channel_name}/showLinkPreview=0&showViaBot=0&showReplyTo=0&showFwdFrom=0&showFwdFromAuthor=0&showInlineButtons=0&showMediaTagInTitle=1&showMediaTagAsEmoji=1&includeFwd=0&includeReply=1&includeServiceMsg=0&includeUnsupportedMsg=0" # noqa
-            response = await client.get(url)
-            if response.status_code == 200:
-                return response
-            else:
-                logger.warning(
-                    f"Failed to fetch RSS from {host}"
-                    f" for channel: {channel_url} "
-                    f"Status code: {response.status_code}"
-                )
-        logger.error(f"All RSSHub hosts failed for channel: {channel_url}")
+@dataclass
+class TgCredentials:
+    api_id: int
+    api_hash: str
+    session_string: str
 
 
-async def fetch_and_parse_telegram_channels(
-    channel_urls: list[str],
+def get_tg_client() -> TelegramClient:
+    """
+    Returns an authorized Telegram client.
+    
+    Raises ValueError if any credentials are missing.
+    """
+    tg_credentials = TgCredentials(
+        api_id=settings.tg_api_id,
+        api_hash=settings.tg_api_hash,
+        session_string=settings.tg_session_string,
+    )
+    client = TelegramClient(
+        StringSession(tg_credentials.session_string),
+        tg_credentials.api_id,
+        tg_credentials.api_hash,
+    )
+    return client
+
+
+async def get_messages_from_telegram_channel(
+    channel_url: str,
+    limit: int = 10
 ) -> list[RSSItemSchema]:
-    tasks = []
-    for channel_url in channel_urls:
-        tasks.append(fetch_rss_feed(channel_url))
-    try:
-        responses = await asyncio.gather(
-            *tasks, return_exceptions=True
-        )
-        messages = []
-        for rss_response in responses:
-            if isinstance(rss_response, Exception):
-                logger.error(f"Error fetching channel: {rss_response}")
-                continue
-            else:
-                messages.extend(parse_rss_feed(rss_response))
+    """
+    Fetches messages from a Telegram channel using Telethon.
+
+    :param channel_url: The URL of the Telegram channel.
+    :param limit: The maximum number of messages to fetch.
+
+    :return: A list of RSSItemSchema containing the messages.
+    """
+    channel_name = channel_url.replace("https://t.me/", "").rstrip("/")
+    client: TelegramClient = get_tg_client()
+    messages: list[RSSItemSchema] = []
+    async with client:
+        message: Message
+        async for message in client.iter_messages(
+            entity=channel_name,
+            limit=limit
+        ):
+            if message.text:
+                messages.append(
+                    RSSItemSchema(
+                        title=(
+                            message.raw_text[:50] if message.text
+                            else "No Title"
+                        ),
+                        description=message.raw_text or "",
+                        link=f"https://t.me/{channel_name}/{message.id}",
+                        pub_date=message.date,
+                    )
+                )
         return messages
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error while fetching channel {channel_url}: {e}")
-        return []
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        return []
 
 
 async def telegram_producer() -> None:
-    logger.info("Starting Telegram producer...")
     channel_urls = await get_sources(telegram=True)
     if not channel_urls:
         logger.info("No Telegram channels configured.")
         return
-    news_items = await fetch_and_parse_telegram_channels(
-        channel_urls=list(channel_urls.values())
-    )
-    logger.info(f"Fetched {len(news_items)} news items from Telegram.")
+    channel_urls_list = list(channel_urls.values())
+    task_list = []
+    news_items: list[RSSItemSchema] = []
+    for url in channel_urls_list:
+        task_list.append(get_messages_from_telegram_channel(url))
+    results = await asyncio.gather(*task_list, return_exceptions=True)
+    for result in results:
+        if isinstance(result, Exception):
+            # TODO: there's obviously not enough data in logging
+            logger.error(f"Error fetching messages: {result}")
+            continue
+        else:
+            news_items.extend(result)
     await add_news_to_db(news_items)

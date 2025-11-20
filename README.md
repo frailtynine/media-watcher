@@ -9,18 +9,18 @@ AI-powered news monitoring that aggregates RSS feeds and Telegram channels, clas
 - **Custom Tasks**: Personalized news monitoring with custom criteria
 - **Telegram Integration**: Filtered news notifications via bot
 - **Web Dashboard**: React interface for task management
-- **Translation**: DeepL API integration for translation. In current implementation — from English to Russian.
+- **Translation**: Relevant foreign-language news are translated (in current implementation — to Russian) with Gemini AI. Full-text translation is avaliable on user's request.  
 - **Real-time updates (WIP)**: WebSocket notifications and Redis caching — work in progress, not yet implemented.
 
 ## � Usage Guide
 
 ### 0. Setup
-1. Open web interface at http://localhost:8050
+1. Open web interface
 2. Go to Setiings. 
 3. Add AI API code and Deepl code.
 
 ### 1. Creating News Tasks
-1. Open web interface at http://localhost:8050
+1. Open web interface
 2. Click "Create New Task" 
 3. Define monitoring criteria:
    - **Title**: Task name
@@ -90,6 +90,11 @@ MEDIA_WATCHER_LOKI_URL=https://logs-prod-XXX.grafana.net
 MEDIA_WATCHER_LOKI_USER=123456
 MEDIA_WATCHER_LOKI_API_KEY=glc_xxxxxxxxxxxxx
 
+# Telegram
+MEDIA_WATCHER_TG_SESSION_STRING=example_string
+MEDIA_WATCHER_TG_API_ID=1234567
+MEDIA_WATCHER_TG_API_HASH=example_hash
+
 # Application  
 MEDIA_WATCHER_HOST=0.0.0.0
 MEDIA_WATCHER_PORT=8050
@@ -102,7 +107,7 @@ MEDIA_WATCHER_CORS_ORIGINS=["http://localhost:3000"]
 - **Backend**: FastAPI, SQLAlchemy, Redis, OpenAI API
 - **Frontend**: React, TypeScript, Chakra UI
 - **Database**: SQLite (dev) / PostgreSQL (prod)
-- **AI**: DeepSeek API for classification, DeepL for translation
+- **AI**: Gemini 2.5 flash lite to keep costs low enough
 - **Logging**: Grafana Cloud Loki (optional, for centralized log management)
 - **Deployment**: Docker, Docker Compose
 
