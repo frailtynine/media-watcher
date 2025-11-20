@@ -14,20 +14,6 @@ from ai_news_bot.ai.rss_producer import rss_producer
 from ai_news_bot.ai.news_consumer import news_consumer
 
 
-TG_CHANNELS = [
-    "astrapress",
-    "ostorozhno_novosti"
-]
-
-RSS_URLS = [
-    "https://tass.ru/rss/v2.xml",
-    "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-    "https://feeds.feedburner.com/variety/headlines",
-    "https://www.kommersant.ru/rss/corp.xml",
-    "https://nemoskva.net/feed/",
-]
-
-
 async def _setup_db(app: FastAPI) -> None:  # pragma: no cover
     """
     Creates connection to the database.
@@ -87,6 +73,9 @@ async def lifespan_setup(
         news_consumer,
         "interval",
         minutes=1,
+        coalesce=True,
+        max_instances=1,
+        misfire_grace_time=30,
     )
     app.middleware_stack = app.build_middleware_stack()
 
