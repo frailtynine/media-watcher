@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { useComponent } from "../hooks/Сomponent";
 import AllTasks from "../Pages/Dashboard";
 import { newsTaskApi } from "../api";
+import SourcesComponent from "./Sources";
 
 
 interface NewsTaskCardProps {
@@ -184,6 +185,7 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
   }
 
   return (
+    <Box display="flex" flexDirection="column">
     <Box display="flex" flexDirection="row" w="100%" h="100vh" gap={4}>
     <Card.Root w="60%" h="100vh" display="flex" flexDirection="column">
       <Card.Body gap="2" position="relative" flex="1" overflow="hidden">
@@ -443,6 +445,8 @@ const getCheckResult = (itemIndex: number, isRelevant: boolean) => {
         </>
       )}
     </Box>
+  </Box>
+    <SourcesComponent sources={{ rss_urls: task?.rss_urls || {}, tg_urls: task?.tg_urls || {} }} taskId={task?.id || 0} />
   </Box>
   );
 }

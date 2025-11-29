@@ -1,5 +1,4 @@
 import pytest
-from unittest import mock
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,10 +35,6 @@ async def test_get_settings_creates_default_when_none_exist(
     assert response.status_code == 200
     data = response.json()
     assert "deepseek" in data
-    assert "rss_urls" in data
-    assert "tg_urls" in data
-    assert isinstance(data["rss_urls"], dict)
-    assert isinstance(data["tg_urls"], dict)
 
 
 @pytest.mark.anyio
@@ -55,8 +50,6 @@ async def test_get_settings_returns_existing_settings(
         session=dbsession,
         obj_in=SettingsSchema(
             deepseek="test-deepseek-key",
-            rss_urls={"bbc": "https://feeds.bbci.co.uk/news/rss.xml"},
-            tg_urls={"test_channel": "https://t.me/test"},
         )
     )
 
@@ -69,8 +62,6 @@ async def test_get_settings_returns_existing_settings(
     assert response.status_code == 200
     data = response.json()
     assert data["deepseek"] == "test-deepseek-key"
-    assert data["rss_urls"] == {"bbc": "https://feeds.bbci.co.uk/news/rss.xml"}
-    assert data["tg_urls"] == {"test_channel": "https://t.me/test"}
 
 
 @pytest.mark.anyio
@@ -197,237 +188,3 @@ async def test_update_settings_requires_authentication(
     )
 
     assert response.status_code == 401
-
-
-@pytest.mark.anyio
-async def test_add_source_rss_success(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source successfully adds RSS source."""
-    # Ensure settings exist
-    await settings_crud.create(
-        session=dbsession,
-        obj_in=SettingsSchema(
-            deepseek=None,
-            rss_urls={},
-            tg_urls={},
-        )
-    )
-
-    url = fastapi_app.url_path_for("add_source")
-
-    with mock.patch(
-        "ai_news_bot.web.api.settings.views.validate_rss_url"
-    ) as mock_validate:
-        mock_validate.return_value = (True, "https://example.com/rss.xml")
-        payload = {
-            "source_url": "https://example.com/rss.xml",
-            "source_name": "example_news",
-            "source_type": "rss"
-        }
-
-        response = await client.post(
-            url,
-            headers=auth_headers,
-            json=payload
-        )
-        print(response.json())
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["detail"] == "https://example.com/rss.xml"
-        mock_validate.assert_called_once_with("https://example.com/rss.xml")
-
-
-@pytest.mark.anyio
-async def test_add_source_telegram_success(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source successfully adds Telegram source."""
-    # Ensure settings exist
-    await settings_crud.create(
-        session=dbsession,
-        obj_in=SettingsSchema(
-            deepseek=None,
-            rss_urls={},
-            tg_urls={},
-        )
-    )
-
-    url = fastapi_app.url_path_for("add_source")
-
-    with mock.patch(
-        "ai_news_bot.web.api.settings.views.validate_telegram_channel_url"
-    ) as mock_validate:
-        mock_validate.return_value = (True, "https://t.me/test_channel")
-        payload = {
-            "source_url": "https://t.me/test_channel",
-            "source_name": "test_channel",
-            "source_type": "telegram"
-        }
-
-        response = await client.post(
-            url,
-            json=payload,
-            headers=auth_headers,
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["detail"] == "https://t.me/test_channel"
-        mock_validate.assert_called_once_with("https://t.me/test_channel")
-
-
-@pytest.mark.anyio
-async def test_add_source_invalid_rss_url(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source with invalid RSS URL."""
-    url = fastapi_app.url_path_for("add_source")
-
-    with mock.patch(
-        "ai_news_bot.web.api.settings.views.validate_rss_url"
-    ) as mock_validate:
-        mock_validate.return_value = (
-            False, "RSS недоступен по указанному URL."
-        )
-        payload = {
-            "source_url": "https://invalid-url.com",
-            "source_name": "invalid_source",
-            "source_type": "rss"
-        }
-
-        response = await client.post(
-            url,
-            json=payload,
-            headers=auth_headers,
-        )
-
-        assert response.status_code == 400
-        data = response.json()
-        assert "RSS недоступен по указанному URL." in data["detail"]
-
-
-@pytest.mark.anyio
-async def test_add_source_invalid_telegram_url(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source with invalid Telegram URL."""
-    url = fastapi_app.url_path_for("add_source")
-
-    with mock.patch(
-        "ai_news_bot.web.api.settings.views.validate_telegram_channel_url"
-    ) as mock_validate:
-        mock_validate.return_value = (
-            False, "Telegram-канал недоступен или URL неверен."
-        )
-        payload = {
-            "source_url": "https://invalid-telegram-url.com",
-            "source_name": "invalid_channel",
-            "source_type": "telegram"
-        }
-
-        response = await client.post(
-            url,
-            json=payload,
-            headers=auth_headers,
-        )
-
-        assert response.status_code == 400
-        data = response.json()
-        assert "Telegram-канал недоступен или URL неверен." in data["detail"]
-
-
-@pytest.mark.anyio
-async def test_add_source_invalid_source_type(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source with invalid source type."""
-    url = fastapi_app.url_path_for("add_source")
-    payload = {
-        "source_url": "https://example.com",
-        "source_name": "test_source",
-        "source_type": "invalid_type"
-    }
-
-    response = await client.post(
-        url,
-        json=payload,
-        headers=auth_headers,
-    )
-    assert response.status_code == 422
-
-
-@pytest.mark.anyio
-async def test_add_source_crud_failure(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source when CRUD operation fails."""
-    url = fastapi_app.url_path_for("add_source")
-
-    with mock.patch(
-        "ai_news_bot.web.api.settings.views.validate_rss_url"
-    ) as mock_validate:
-        mock_validate.return_value = (True, "https://example.com/rss.xml")
-
-        with mock.patch(
-            "ai_news_bot.web.api.settings.views.settings_crud."
-            "add_source_to_dict"
-        ) as mock_crud:
-            mock_crud.return_value = None  # Simulate failure
-            payload = {
-                "source_url": "https://example.com/rss.xml",
-                "source_name": "example_news",
-                "source_type": "rss"
-            }
-            response = await client.post(
-                url,
-                json=payload,
-                headers=auth_headers,
-            )
-
-            assert response.status_code == 500
-            data = response.json()
-            assert "Failed to add RSS source." in data["detail"]
-
-
-@pytest.mark.anyio
-async def test_add_source_missing_parameters(
-    fastapi_app: FastAPI,
-    client: AsyncClient,
-    auth_headers: dict,
-    dbsession: AsyncSession,
-) -> None:
-    """Test POST /add_source with missing required parameters."""
-    url = fastapi_app.url_path_for("add_source")
-    payload = {
-        "source_url": "https://example.com/rss.xml",
-        "source_name": "example_news"
-        # Missing source_type
-    }
-
-    response = await client.post(
-        url,
-        json=payload,
-        headers=auth_headers,
-    )
-
-    assert response.status_code == 422  # Validation error

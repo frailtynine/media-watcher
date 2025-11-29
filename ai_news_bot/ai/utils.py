@@ -11,6 +11,7 @@ from rss_parser import RSSParser
 from ai_news_bot.db.dependencies import get_standalone_session
 from ai_news_bot.web.api.news_task.schema import RSSItemSchema
 from ai_news_bot.db.crud.news import crud_news
+from ai_news_bot.db.crud.news_task import news_task_crud
 from ai_news_bot.db.crud.settings import settings_crud
 
 
@@ -44,7 +45,7 @@ def prepare_translated_response(
         else origin_text.url
     )
     if not response:
-        title_line = f"[{origin_text.title}]({link})\n\n"
+        title_line = f"<a href=\"{link}\">{origin_text.title}</a>\n\n"
         if hasattr(origin_text, "description"):
             body = origin_text.description
         else:
@@ -53,7 +54,7 @@ def prepare_translated_response(
             f"{title_line}{body}\n\n"
             "Перевод не случился, сорян."
         )
-    translated_text = f"[{response.title}]({link})\n\n"
+    translated_text = f"<a href=\"{link}\">{response.title}</a>\n\n"
     if response.description:
         translated_text += f"{response.description}\n\n"
     return translated_text
@@ -113,7 +114,10 @@ async def translate_with_ai(
         return prepare_translated_response(response=None, origin_text=text)
 
 
-def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:
+def parse_rss_feed(
+    response: httpx.Response,
+    source_name: str,
+) -> list[RSSItemSchema]:
     """
     Parse RSS feed response and return list of RSSItemSchema.
 
@@ -137,18 +141,29 @@ def parse_rss_feed(response: httpx.Response) -> list[RSSItemSchema]:
                 item.description.content if item.description else ""
             ),
             pub_date=parse_date(item.pub_date.content),
+            source_name=source_name,
         )
         for item in feed.channel.items
     ]
     return messages
 
 
-async def get_rss_feed(url: str) -> httpx.Response:
-    """Fetch RSS feed from a URL."""
+async def get_rss_feed(
+    source_name: str,
+    source_url: str,
+) -> tuple[httpx.Response, str]:
+    """
+    Fetch RSS feed from a URL.
+    Args:
+        source_name: The name of the RSS source.
+        source_url: The URL of the RSS feed.
+    Returns:
+        A tuple containing the httpx.Response object and source name.
+    """
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        response = await client.get(source_url)
         response.raise_for_status()
-        return response
+        return response, source_name
 
 
 async def add_news_to_db(
@@ -164,7 +179,9 @@ async def add_news_to_db(
             )
             if not existing_news:
                 await crud_news.create(session=session, obj_in=item)
-                logger.info(f"Added news: {item.title}")
+                logger.info(
+                    f"Added news: {item.title} from source {item.source_name}"
+                )
 
 
 async def get_sources(
@@ -172,16 +189,18 @@ async def get_sources(
     telegram: bool = False
 ) -> dict[str, str]:
     """
-    Retrieve RSS or Telegram sources from settings.
+    Retrieve RSS or Telegram sources from NewsTasks.
 
     Args:
         rss: If True, retrieve RSS sources.
         telegram: If True, retrieve Telegram sources.
     """
     async with get_standalone_session() as session:
-        settings = await settings_crud.get_all_objects(session=session)
-        if settings and telegram:
-            return settings[0].tg_urls
-        elif settings and rss:
-            return settings[0].rss_urls
-        return {}
+        all_tasks = await news_task_crud.get_all_objects(session=session)
+    result = {}
+    if not all_tasks:
+        return result
+    for task in all_tasks:
+        urls = task.tg_urls if telegram else task.rss_urls
+        result.update(urls)
+    return result

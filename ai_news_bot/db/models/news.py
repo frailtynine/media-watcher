@@ -16,3 +16,8 @@ class News(Base):
     pub_date: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
     additional_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     processed: Mapped[bool] = mapped_column(nullable=False, default=False)
+    source_name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=False,
+        default="unknown",
+    )

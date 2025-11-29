@@ -20,20 +20,24 @@ async def rss_producer():
     if not rss_urls:
         logger.info("No RSS URLs configured.")
         return
-    rss_urls_list = list(rss_urls.values())
-    for url in rss_urls_list:
-        tasks.append(get_rss_feed(url))
+    for source_name, source_url in rss_urls.items():
+        tasks.append(get_rss_feed(source_name, source_url))
     try:
         responses = await asyncio.gather(
             *tasks, return_exceptions=True
         )
         messages = []
-        for rss_response in responses:
+        for rss_response, source_name in responses:
             if isinstance(rss_response, Exception):
-                logger.error(f"Error fetching RSS feed: {rss_response}")
+                logger.error(
+                    f"Error fetching RSS feed {source_name}: {rss_response}"
+                )
                 continue
             else:
-                messages.extend(parse_rss_feed(rss_response))
+                messages.extend(parse_rss_feed(
+                    rss_response,
+                    source_name
+                ))
         await add_news_to_db(messages)
         logger.info("RSS producer finished.")
     except httpx.HTTPError as e:

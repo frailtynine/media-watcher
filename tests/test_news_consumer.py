@@ -31,6 +31,7 @@ def sample_news():
         description="This is a test news description",
         pub_date=datetime.now(timezone.utc),
         processed=False,
+        source_name="Test Source",
     )
 
 
@@ -48,6 +49,10 @@ def sample_news_task():
             {"title": "Irrelevant News 2", "description": "Also not relevant"},
         ],
         positives=[],
+        rss_urls={},
+        tg_urls={
+            "Test Source": "https://t.me/test_channel"
+        },
     )
 
 
@@ -71,9 +76,7 @@ async def test_send_news_to_telegram(sample_news, dbsession: AsyncSession):
         with patch(
             'ai_news_bot.ai.news_consumer.queue_task_message'
         ) as mock_queue:
-            news_rss_schema = RSSItemSchema.model_validate(sample_news)
-            print(news_rss_schema)
-            await send_news_to_telegram(news_rss_schema, task_id=1)
+            await send_news_to_telegram(sample_news, task_id=1)
 
             # Verify queue_task_message was called for each chat_id
             assert mock_queue.call_count == 2
@@ -84,7 +87,9 @@ async def test_send_news_to_telegram(sample_news, dbsession: AsyncSession):
             assert "Test News Title" in call_args['text']
             assert "https://example.com/news/1" in call_args['text']
             assert call_args['task_id'] == "1"
-            assert call_args['news'] == news_rss_schema
+            assert call_args['news'] == RSSItemSchema.model_validate(
+                sample_news
+            )
 
 
 @pytest.mark.anyio
@@ -95,7 +100,7 @@ async def test_process_news_relevant(
     # Mock the Google Generative AI response
     mock_response = MagicMock()
     mock_response.text = "true"
-    mock_response.usage_metadata = {"total_tokens": 100}
+    mock_response.usage_metadata.total_token_count = 100
 
     with patch('ai_news_bot.ai.news_consumer.GeminiClient') as mock_gemini:
         mock_client = AsyncMock()
@@ -123,7 +128,7 @@ async def test_process_news_not_relevant(
     # Mock the Google Generative AI response
     mock_response = MagicMock()
     mock_response.text = "false"
-    mock_response.usage_metadata = {"total_tokens": 85}
+    mock_response.usage_metadata.total_token_count = 85
 
     with patch('ai_news_bot.ai.news_consumer.GeminiClient') as mock_gemini:
         mock_client = AsyncMock()

@@ -97,6 +97,7 @@ async def test_news_crud(dbsession: AsyncSession, test_user: str) -> None:
         link="http://example.com/false-positive",
         description="This is a false positive news item.",
         pub_date=datetime.now(),
+        source_name="Example Source",
     )
     updated_task = await news_task_crud.add_false_positive(
         news=false_positive,
@@ -160,3 +161,60 @@ async def test_ai_results_endpoint(
 
     assert response.status_code == 200
     assert response.json() is True
+
+
+@pytest.mark.anyio
+async def test_add_sources_to_news_task(
+    dbsession: AsyncSession,
+    test_user: str,
+) -> None:
+    """Test adding RSS and Telegram sources to a news task."""
+    user = await dbsession.get(User, test_user)
+
+    # Create a new task
+    new_task = NewsTaskCreateSchema(
+        title="Sources Test Task",
+        description="This is a test task for sources",
+        end_date=(datetime.now() + timedelta(days=7)),
+    )
+    created_task = await news_task_crud.create(
+        session=dbsession,
+        obj_in=new_task,
+        user=user,
+    )
+
+    # Verify initial state - empty sources
+    assert created_task.rss_urls == {}
+    assert created_task.tg_urls == {}
+
+    # Add RSS sources
+    rss_sources = {
+        "TechCrunch": "https://techcrunch.com/feed/",
+        "HackerNews": "https://news.ycombinator.com/rss",
+    }
+    created_task.rss_urls = rss_sources
+    await dbsession.commit()
+    await dbsession.refresh(created_task)
+
+    assert created_task.rss_urls == rss_sources
+    assert len(created_task.rss_urls) == 2
+
+    # Add Telegram sources
+    tg_sources = {
+        "TechNews": "https://t.me/technews",
+        "DevChannel": "https://t.me/devchannel",
+    }
+    created_task.tg_urls = tg_sources
+    await dbsession.commit()
+    await dbsession.refresh(created_task)
+
+    assert created_task.tg_urls == tg_sources
+    assert len(created_task.tg_urls) == 2
+
+    # Verify both sources are persisted
+    retrieved_task = await news_task_crud.get_object_by_id(
+        session=dbsession,
+        obj_id=created_task.id,
+    )
+    assert retrieved_task.rss_urls == rss_sources
+    assert retrieved_task.tg_urls == tg_sources

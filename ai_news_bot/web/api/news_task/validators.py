@@ -73,7 +73,10 @@ async def validate_telegram_channel_url(url: str) -> tuple[bool, str | None]:
     """
     normalized_url = normalize_telegram_url(url)
     try:
-        response = await get_messages_from_telegram_channel(normalized_url, 1)
+        response = await get_messages_from_telegram_channel(
+            url,
+            normalized_url, 1
+        )
     except Exception as e:
         logger.error(f"Error validating Telegram channel URL: {e}")
         return False, "Что-то не такя."
