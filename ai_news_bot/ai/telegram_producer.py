@@ -40,7 +40,7 @@ class TgCredentials:
 def get_tg_client() -> TelegramClient:
     """
     Returns an authorized Telegram client.
-    
+
     Raises ValueError if any credentials are missing.
     """
     tg_credentials = TgCredentials(
@@ -57,18 +57,20 @@ def get_tg_client() -> TelegramClient:
 
 
 async def get_messages_from_telegram_channel(
-    channel_url: str,
+    source_name: str,
+    source_url: str,
     limit: int = 10
 ) -> list[RSSItemSchema]:
     """
     Fetches messages from a Telegram channel using Telethon.
 
-    :param channel_url: The URL of the Telegram channel.
+    :param source_name: The name of the Telegram channel.
+    :param source_url: The URL of the Telegram channel.
     :param limit: The maximum number of messages to fetch.
 
     :return: A list of RSSItemSchema containing the messages.
     """
-    channel_name = channel_url.replace("https://t.me/", "").rstrip("/")
+    channel_name = source_url.replace("https://t.me/", "").rstrip("/")
     client: TelegramClient = get_tg_client()
     messages: list[RSSItemSchema] = []
     async with client:
@@ -87,6 +89,7 @@ async def get_messages_from_telegram_channel(
                         description=message.raw_text or "",
                         link=f"https://t.me/{channel_name}/{message.id}",
                         pub_date=message.date,
+                        source_name=source_name,
                     )
                 )
         return messages
@@ -97,11 +100,14 @@ async def telegram_producer() -> None:
     if not channel_urls:
         logger.info("No Telegram channels configured.")
         return
-    channel_urls_list = list(channel_urls.values())
     task_list = []
     news_items: list[RSSItemSchema] = []
-    for url in channel_urls_list:
-        task_list.append(get_messages_from_telegram_channel(url))
+    for source_name, source_url in channel_urls.items():
+        task_list.append(get_messages_from_telegram_channel(
+                source_name,
+                source_url
+            )
+        )
     results = await asyncio.gather(*task_list, return_exceptions=True)
     for result in results:
         if isinstance(result, Exception):

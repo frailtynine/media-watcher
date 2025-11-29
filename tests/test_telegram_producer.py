@@ -73,7 +73,7 @@ async def test_get_messages_from_telegram_channel_success():
         mock_get_client.return_value = mock_client
 
         result = await get_messages_from_telegram_channel(
-            "https://t.me/test_channel", limit=2
+            "test channel", "https://t.me/test_channel", limit=2
         )
 
         assert len(result) == 2
@@ -94,7 +94,7 @@ async def test_get_messages_from_telegram_channel_empty():
         mock_get_client.return_value = mock_client
 
         result = await get_messages_from_telegram_channel(
-            "https://t.me/empty_channel"
+            "empty channel", "https://t.me/empty_channel"
         )
 
         assert result == []
@@ -125,7 +125,7 @@ async def test_get_messages_from_telegram_channel_no_text():
         mock_get_client.return_value = mock_client
 
         result = await get_messages_from_telegram_channel(
-            "https://t.me/test_channel"
+            "test channel", "https://t.me/test_channel"
         )
 
         # Should only return message with text
@@ -142,6 +142,7 @@ async def test_telegram_producer_success():
             description="Test description",
             link="https://t.me/channel/1",
             pub_date=datetime.now(timezone.utc),
+            source_name="test channel",
         )
     ]
 
@@ -208,6 +209,7 @@ async def test_telegram_producer_with_exception():
             description="Test description",
             link="https://t.me/channel/1",
             pub_date=datetime.now(timezone.utc),
+            source_name="test channel",
         )
     ]
 
@@ -261,7 +263,10 @@ async def test_get_messages_url_parsing():
             mock_client = create_mock_client_with_messages([])
             mock_get_client.return_value = mock_client
 
-            await get_messages_from_telegram_channel(url)
+            await get_messages_from_telegram_channel(
+                expected_channel,
+                url
+            )
 
             # Verify iter_messages was called with correct channel name
             call_args = mock_client.iter_messages.call_args

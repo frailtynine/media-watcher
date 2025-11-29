@@ -1,12 +1,12 @@
 // Authentication API module
 
 import axios from 'axios';
-import type { NewsTask, NewsTaskCreate, CryptoTask, CryptoTaskCreate, Event, Prompt, PromptExample, Settings } from './interface';
+import type { NewsTask, NewsTaskCreate, Prompt, PromptExample, Settings } from './interface';
 
 
-const API_BASE_URL = '/api';
+// const API_BASE_URL = '/api';
 // For local development, uncomment the following line and comment the above line
-// const API_BASE_URL = 'http://localhost:8050/api';
+const API_BASE_URL = 'http://localhost:8050/api';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -230,64 +230,19 @@ export const newsTaskApi = {
     }
   },
 
-};
+  async customCall<TResponse = any>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    path: string,
+    data?: any
+  ): Promise<TResponse | null> {
 
-export const cryptoTaskApi = {
-  // Get all crypto tasks for current user
-  async getTasks(): Promise<CryptoTask[]> {
-    try {
-      const response = await api.get('/crypto_task/');
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch crypto tasks:', error);
-      return [];
-    }
-  },
-  
-  // Get a specific crypto task by ID
-  async getTask(taskId: number): Promise<CryptoTask | null> {
-    try {
-      const response = await api.get(`/crypto_task/${taskId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Failed to fetch crypto task ${taskId}:`, error);
-      return null;
-    }
-  },
-  
-  // Create a new crypto task
-  async createTask(data: CryptoTaskCreate): Promise<CryptoTask | null> {
-    try {
-      const response = await api.post<CryptoTask>('/crypto_task/', data);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to create crypto task:', error);
-      return null;
-    }
-  },
-  
-  // Delete crypto task by ID
-  async deleteTask(taskId: number): Promise<boolean> {
-    try {
-      await api.delete(`/crypto_task/${taskId}`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to delete crypto task ${taskId}:`, error);
-      return false;
-    }
-  },
-
-  // Update an existing crypto task
-  async updateTask(taskId: number, data: CryptoTask): Promise<CryptoTask | null> {
-    try {
-      const response = await api.put<CryptoTask>(`/crypto_task/${taskId}`, data);
-      return response.data;
-    }
-    catch (error) {
-      console.error(`Failed to update crypto task ${taskId}:`, error);
-      return null;
-    }
-  },
+    const response = await api.request<TResponse>({
+      method: method.toLowerCase() as any,
+      url: `/news_task/${path}`,
+      data,
+    });
+    return response.data;
+  }
 };
 
 
@@ -379,8 +334,6 @@ export class CrudApi<T, TCreate = Partial<T>, TUpdate = Partial<T>> {
     return response.data;
   }
 }
-
-export const eventsAPI = new CrudApi<Event>('events');
 
 class promptAPI extends CrudApi<Prompt> {
   constructor() {

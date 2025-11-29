@@ -26,13 +26,16 @@ logger = logging.getLogger(__name__)
 async def send_news_to_telegram(news: "News", task_id: int) -> None:
     async with get_standalone_session() as session:
         chat_ids = await telegram_user_crud.get_all_chat_ids(
-            session=session
+            session=session,
+            task_id=task_id
         )
     description_text = (
-        f"{news.description}\n\n"
+        f"{clear_html_tags(news.description)}\n\n"
         if news.description else ""
     )
-    text = f"[{news.title}]({news.link})\n\n{description_text}"
+    text = (
+        f"<a href=\"{news.link}\">{news.title}</a>\n\n{description_text}"
+    )
     for chat_id in chat_ids:
         await queue_task_message(
             chat_id=chat_id,
@@ -42,7 +45,8 @@ async def send_news_to_telegram(news: "News", task_id: int) -> None:
                 title=news.title,
                 description=news.description,
                 link=news.link,
-                pub_date=news.pub_date,),
+                pub_date=news.pub_date,
+                source_name=news.source_name,),
         )
 
 
@@ -53,11 +57,26 @@ async def process_news(
     initial_prompt: str,
     deepseek_api_key: str
 ) -> bool:
+    """"
+    Processes a news item using Gemini AI to determine its relevance
+    to a given news task.
+    Args:
+        news: News item or string to process.
+        news_task: NewsTask object containing filtering criteria.
+        initial_prompt: The initial prompt for the AI model.
+        deepseek_api_key: API key for AI model. Ignore the field name lol.
+    Returns:
+        bool: True if the news is relevant, False otherwise.
+    """
     async with GeminiClient(
         api_key=deepseek_api_key,
     ).aio as client:
-        if type(news) is not str:
-            news_item = f"{news.title} \n {clear_html_tags(news.description)}."
+        if not isinstance(news, str):
+            description = (
+                clear_html_tags(news.description) if news.description
+                else ""
+            )
+            news_item = f"{news.title} \n {description}."
         else:
             news_item = news
         try:
@@ -74,11 +93,9 @@ async def process_news(
                 contents=(f"News: {news_item} \n\n")
             )
             logger.info(
-                f"Token count for {news_item[:50]}: {response.usage_metadata}."
+                f"Token count for {news_item[:50]}: "
+                f"{response.usage_metadata.total_token_count}."
             )
-            for part in response.candidates[0].content.parts:
-                if part.thought:
-                    logger.info(f"AI Thought: {part.text}")
             if (
                 response.text.lower() == "true"
             ):
@@ -102,6 +119,14 @@ async def add_positive_news(
     news_id: int,
     news_task_id: int,
 ) -> None:
+    """
+    Adds a news item as a positive example to the specified news task.
+
+    Args:
+        news_id: The ID of the news item to add.
+        news_task_id: The ID of the news task to which the news item
+        should be added.
+    """
     async with get_standalone_session() as session:
         news: "News" = await crud_news.get_object_by_id(
             session=session,
@@ -116,12 +141,24 @@ async def add_positive_news(
             link=news.link,
             description=news.description,
             pub_date=news.pub_date,
+            source_name=news.source_name,
         )
         await news_task_crud.add_positive(
             news=rss_news_item,
             news_task_id=news_task.id,
             session=session,
         )
+
+
+def check_news_source_in_task(
+    news: "News",
+    news_task: "NewsTask"
+) -> bool:
+    """Check if the news source is included in the news task's sources."""
+    news_task_sources_dict = news_task.tg_urls | news_task.rss_urls
+    if news.source_name in news_task_sources_dict.keys():
+        return True
+    return False
 
 
 async def news_consumer() -> None:
@@ -143,9 +180,10 @@ async def news_consumer() -> None:
     if unprocessed_news:
         for news in unprocessed_news:
             try:
-                logger.info(f"Processing news: {news.title}")
                 no_faults = True
                 for news_task in tasks:
+                    if not check_news_source_in_task(news, news_task):
+                        continue
                     try:
                         is_relevant = await process_news(
                             news=news,

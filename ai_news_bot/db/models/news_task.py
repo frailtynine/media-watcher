@@ -10,6 +10,7 @@ from ai_news_bot.db.base import Base
 
 if TYPE_CHECKING:
     from ai_news_bot.db.models.users import User
+    from ai_news_bot.db.models.telegram import TelegramUser
 
 
 class NewsTask(Base):
@@ -53,6 +54,18 @@ class NewsTask(Base):
         JSON,
         default=list,
         server_default="[]",
+    )
+    tg_users: Mapped[list["TelegramUser"]] = relationship(
+        secondary="tg_user_news_task",
+        back_populates="tasks",
+    )
+    rss_urls: Mapped[dict] = mapped_column(
+        JSON,
+        default={},
+    )
+    tg_urls: Mapped[dict] = mapped_column(
+        JSON,
+        default={},
     )
 
     def __repr__(self):

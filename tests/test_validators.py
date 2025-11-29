@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 
-from ai_news_bot.web.api.settings.validators import (
+from ai_news_bot.web.api.news_task.validators import (
     validate_telegram_channel_url,
     normalize_telegram_url
 )
@@ -23,11 +23,12 @@ async def test_validate_telegram_channel_url():
             description="Test description",
             link="https://t.me/astrapress/1",
             pub_date=datetime.now(timezone.utc),
+            source_name="astrapress",
         )
     ]
 
     with patch(
-        "ai_news_bot.web.api.settings.validators."
+        "ai_news_bot.web.api.news_task.validators."
         "get_messages_from_telegram_channel"
     ) as mock_get_messages:
         # Test valid Telegram URL - should return messages

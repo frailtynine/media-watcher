@@ -24,6 +24,8 @@ export interface NewsTask extends NewsTaskCreate{
   positives: News[];
   false_positives: News[];
   user: ApiUser;
+  rss_urls: Record<string, string>;
+  tg_urls: Record<string, string>;
 }
 
 interface NewsTaskRedis extends NewsTaskCreate {
@@ -42,56 +44,6 @@ export interface RedisMessage {
   task: NewsTaskRedis
 }
 
-// Crypto Task Types
-export const CryptoTaskType = {
-  UP: "up",
-  DOWN: "down",
-  PRICE: "price"
-} as const;
-
-export type CryptoTaskType = typeof CryptoTaskType[keyof typeof CryptoTaskType];
-
-export const CryptoTickersType = {
-  BTC: "bitcoin",
-  TON: "toncoin",
-  ETH: "ethereum",
-  DOGE: "dogecoin",
-}
-
-export type CryptoTickersType = typeof CryptoTickersType[keyof typeof CryptoTickersType];
-
-
-export interface CryptoTaskCreate {
-  title: string;
-  description?: string;
-  end_date: string;
-  start_date?: string;
-  start_point?: number;
-  end_point: number;
-  measurement_time: string;
-  ticker: string;
-  type: CryptoTaskType;
-}
-
-export interface CryptoTask extends CryptoTaskCreate {
-  id: number;
-  is_active: boolean;
-  created_at: string;
-  user_id: string;
-}
-
-export interface Event {
-  id: string;
-  title: string;
-  description: string;
-  created_at: string;
-  results_at: string;
-  ends_at: string;
-  false_positives: Array<Record<string, any>>;
-  positives: Array<Record<string, any>>;
-  rules: string;
-  is_active: boolean;
-}
 
 export interface PromptExample {
   example: string;
@@ -107,6 +59,11 @@ export interface Prompt {
 
 export interface Settings {
   deepseek: string | null;
+  rss_urls: Record<string, string>;
+  tg_urls: Record<string, string>;
+}
+
+export interface Sources {
   rss_urls: Record<string, string>;
   tg_urls: Record<string, string>;
 }

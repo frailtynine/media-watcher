@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,6 +16,7 @@ class RSSItemSchema(BaseModel):
     link: str | None
     description: str | None
     pub_date: datetime
+    source_name: str = "unknown"
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,9 +72,24 @@ class NewsTaskReadSchema(NewsTaskBaseSchema):
     false_positives: list[RSSItemSchema] | None
     non_relevant_news: list[str] | None
     relevant_news: list[str] | None
+    rss_urls: dict | None
+    tg_urls: dict | None
 
 
 class AICheckPayloadSchema(BaseModel):
     """Schema for AI check payload."""
     news_task_id: int
     news_item: str
+
+
+class SourceType(str, Enum):
+    TELEGRAM = "telegram"
+    RSS = "rss"
+
+
+class SourceRequestSchema(BaseModel):
+    """Schema for source request."""
+    task_id: int
+    source_url: str
+    source_name: str
+    source_type: SourceType

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, WebSocket
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,9 +13,17 @@ from ai_news_bot.web.api.news_task.schema import (
     NewsTaskCreateSchema,
     NewsTaskReadSchema,
     NewsTaskUpdateSchema,
-    AICheckPayloadSchema
+    AICheckPayloadSchema,
+    SourceRequestSchema,
+    SourceType
 )
 from ai_news_bot.ai.news_consumer import process_news
+from ai_news_bot.web.api.news_task.validators import (
+    validate_telegram_channel_url,
+    validate_rss_url
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -49,6 +59,106 @@ async def get_news_tasks(
     :return: A list of news tasks.
     """
     return await news_task_crud.get_all_objects(session=session, user=user)
+
+
+@router.post("/add_source")
+async def add_source(
+    request: SourceRequestSchema,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(current_active_user),
+) -> dict[str, str | int]:
+    task = await news_task_crud.get_object_by_id(
+        session=session,
+        obj_id=request.task_id,
+        user=user,
+    )
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="News task not found."
+        )
+    if request.source_type == SourceType.RSS:
+        is_valid, result = await validate_rss_url(request.source_url)
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{result}"
+            )
+    elif request.source_type == SourceType.TELEGRAM:
+        is_valid, result = await validate_telegram_channel_url(
+            request.source_url
+        )
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{result}"
+            )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid source type. Must be 'rss' or 'telegram'."
+        )
+    updated_task = await news_task_crud.add_source_to_dict(
+        session=session,
+        news_task_id=request.task_id,
+        field_name=(
+            "rss_urls" if request.source_type == SourceType.RSS else "tg_urls"
+        ),
+        source_name=request.source_name,
+        url=result,
+    )
+    if updated_task:
+        return {
+            "detail": result,
+            "status": 200,
+        }
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to add source."
+        )
+
+
+@router.delete("/remove_source")
+async def remove_source(
+    request: SourceRequestSchema,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(current_active_user),
+) -> dict[str, str]:
+    field_name: str = (
+        "rss_urls" if request.source_type == SourceType.RSS
+        else "tg_urls"
+    )
+    if not field_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid source type. Must be 'rss' or 'telegram'."
+        )
+    task = await news_task_crud.get_object_by_id(
+        session=session,
+        obj_id=request.task_id,
+        user=user,
+    )
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="News task not found."
+        )
+    updated_task = await news_task_crud.remove_source_from_dict(
+        session=session,
+        field_name=field_name,
+        source_name=request.source_name,
+        news_task_id=request.task_id,
+    )
+    if updated_task:
+        return {
+            "detail": f"{request.source_type} source removed successfully."
+        }
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove {request.source_type} source."
+        )
 
 
 @router.get("/{task_id}", response_model=NewsTaskReadSchema)
