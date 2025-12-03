@@ -337,7 +337,7 @@ async def send_task_message(
         # ],
     ]
     if post_language == "en":
-        keyboard[0].append(
+        keyboard.append(
             InlineKeyboardButton(
                 "🇬🇧 -> 🇷🇺",
                 callback_data=translate_callback
