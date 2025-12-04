@@ -280,7 +280,7 @@ async def send_choose_task_message(
             "action": "select_task",
             "task_id": task_id,
         }
-        keyboard.append(
+        keyboard[0].append(
             [
                 InlineKeyboardButton(
                     task_title,
@@ -329,6 +329,7 @@ async def send_task_message(
     }
     post_language = detect(news.title)
     keyboard = [
+        [],
         # [
         #     InlineKeyboardButton(
         #         "❌",
@@ -337,7 +338,7 @@ async def send_task_message(
         # ],
     ]
     if post_language == "en":
-        keyboard.append(
+        keyboard[0].append(
             InlineKeyboardButton(
                 "🇬🇧 -> 🇷🇺",
                 callback_data=translate_callback
