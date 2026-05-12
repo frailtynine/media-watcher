@@ -27,17 +27,19 @@ async def rss_producer():
             *tasks, return_exceptions=True
         )
         messages = []
-        for rss_response, source_name in responses:
-            if isinstance(rss_response, Exception):
+        for response in responses:
+            if isinstance(response, Exception):
                 logger.error(
-                    f"Error fetching RSS feed {source_name}: {rss_response}"
+                    f"Error fetching RSS feed: {response}"
                 )
                 continue
-            else:
-                messages.extend(parse_rss_feed(
+            rss_response, source_name = response
+            messages.extend(
+                parse_rss_feed(
                     rss_response,
                     source_name
-                ))
+                )
+            )
         await add_news_to_db(messages)
         logger.info("RSS producer finished.")
     except httpx.HTTPError as e:
